@@ -1,0 +1,33 @@
+services:
+  api:
+    build: ./api
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - mongo
+      - redis
+    mem_limit: 2g
+
+  mongo:
+    image: mongo:7
+    command: mongod --wiredTigerCacheSizeGB 1
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    mem_limit: 1500m
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save ""
+    ports:
+      - "6379:6379"
+    mem_limit: 320m
+
+volumes:
+  mongo_data:

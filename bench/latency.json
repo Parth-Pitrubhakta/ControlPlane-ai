@@ -1,0 +1,11 @@
+[
+  {
+    "phase": 0,
+    "what": "gateway framework round trip (/health, mongo+redis ping, no detectors)",
+    "n": 200,
+    "p50_ms": 7.035,
+    "p95_ms": 7.279,
+    "ts": 1787841788.5654094,
+    "host": "heliosH200 native"
+  }
+]

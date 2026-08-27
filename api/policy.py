@@ -137,9 +137,13 @@ async def refresh() -> int:
     n = 0
     for t in TENANTS:
         for g in GEOS:
+            # _id breaks the tie: two versions can legitimately share an
+            # effective_from, and without a deterministic second key Mongo may
+            # hand back the older one, so a published policy silently does not
+            # take effect.
             d = await col.find_one(
                 {"tenant": t, "geo": g, "effective_from": {"$lte": now}},
-                sort=[("effective_from", -1)],
+                sort=[("effective_from", -1), ("_id", -1)],
                 projection={"_id": 0},
             )
             if d:
@@ -168,9 +172,15 @@ def ver(tenant: str, geo: str) -> str:
 
 
 async def put(p: Policy) -> str:
-    """Write a new policy version. Never mutates an existing one."""
-    if not p.effective_from:
-        p.effective_from = time.time()
+    """Write a new policy version. Never mutates an existing one.
+
+    A document posted back from the editor still carries the timestamp of the
+    version it was copied from. Re-using it would date the new version to the
+    old one, so anything not explicitly scheduled for the future is stamped now.
+    """
+    now = time.time()
+    if not p.effective_from or p.effective_from <= now:
+        p.effective_from = now
     await store.db()["policies"].insert_one(p.model_dump())
     await refresh()
     log.info("policy_version", tenant=p.tenant, geo=p.geo, ver=p.ver)

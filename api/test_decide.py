@@ -213,3 +213,24 @@ def test_why_names_severity_as_the_reason():
 
 def test_why_reason_is_findings_for_an_ordinary_decision():
     assert why([f("bias")], pol())["reason"] == "findings"
+
+
+async def test_republished_policy_actually_takes_effect():
+    """A document posted back from the editor carries the old effective_from.
+    Without restamping, the new version loses the sort and never activates."""
+    from api import store
+    await store.open_store()
+    try:
+        await policy.seed()
+        await policy.refresh()
+        cur = policy.get("CS-BOT", "US")
+        new = cur.model_copy(deep=True)
+        new.ver = "restamp-test"
+        new.floors = {**cur.floors, "bias": "block"}
+        # keep the old timestamp exactly as the editor would post it back
+        new.effective_from = cur.effective_from
+        await policy.put(new)
+        assert policy.get("CS-BOT", "US").ver == "restamp-test"
+        assert policy.get("CS-BOT", "US").floors["bias"] == "block"
+    finally:
+        await store.close_store()

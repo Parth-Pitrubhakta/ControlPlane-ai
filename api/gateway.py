@@ -145,7 +145,11 @@ async def resolve(
     t1_ms = 0.0
     if T1_ON and tr.tier >= 1 and resp.strip():
         t1f, t1l = await detclient.check(resp, tr.ctx, rt.need_for(tr.tier))
-        fnd += t1f
+        # A detector reports what it saw; the policy decides what confidence is
+        # worth acting on. Keeping the cut here means a recalibration ships as a
+        # policy version and never needs the detector service restarted.
+        dthr = pol.thr.get("det") or {}
+        fnd += [f for f in t1f if f.conf >= float(dthr.get(f.label, 0.0))]
         t1_ms = float(t1l.get("t1", 0.0))
 
     tr.fnd = fnd

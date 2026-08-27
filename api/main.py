@@ -9,8 +9,10 @@ from typing import AsyncIterator
 
 import structlog
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from api import detclient, gateway, policy, router, store
+from api.routes import admin, metrics, review
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
@@ -58,6 +60,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     setup_log()
     app = FastAPI(title="ControlPlane.ai gateway", version="0.1.0", lifespan=lifespan)
+    # the dashboard runs on its own dev-server port
+    app.add_middleware(
+        CORSMiddleware, allow_origins=["*"], allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.get("/health")
     async def health() -> dict:
@@ -66,6 +73,9 @@ def create_app() -> FastAPI:
                 "policies": len(policy._cache)}
 
     app.include_router(gateway.router)
+    app.include_router(metrics.router)
+    app.include_router(review.router)
+    app.include_router(admin.router)
     return app
 
 

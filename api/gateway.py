@@ -27,8 +27,10 @@ import structlog
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from api import detclient, store, tier0
-from api.schemas import Finding, Trace
+from api import decide as dec
+from api import detclient, edit, ledger, policy, store, tier0
+from api import router as rt   # `router` here is the APIRouter below
+from api.schemas import RANK, Finding, Trace
 
 log = structlog.get_logger("gw")
 router = APIRouter()
@@ -41,7 +43,14 @@ TENANTS = ("CS-BOT", "KB-COPILOT", "DECIDE")
 TIER_OF: dict[str, str] = {"Qwen/Qwen2.5-7B-Instruct": "small"}
 SHADOW_TOKENS = int(os.getenv("SHADOW_TOKENS", "40"))
 T1_ON = os.getenv("T1", "1") == "1"
-T1_NEED = ["nli", "safety", "bias"]
+
+# Fixed bodies for the two actions that withhold the model's text. Constants,
+# not generated: a blocked response must not be an opportunity to say something
+# new (invariant 5).
+BLOCK_MSG = ("This response was withheld by the ControlPlane policy check. "
+             "Please rephrase your request or contact support.")
+ESC_MSG = ("This response is being reviewed by a person before it can be sent. "
+           "You will get an answer shortly.")
 SHADOW_ON = os.getenv("SHADOW", "1") == "1"
 
 # sentence boundary used to cut the shadow buffer into checkable windows
@@ -105,16 +114,65 @@ def _bg(coro: Any) -> None:
     t.add_done_callback(_bg_tasks.discard)
 
 
-async def _t1(tr: Trace, resp: str) -> tuple[list[Finding], dict[str, Any]]:
-    """Tier 1 on the H200.
 
-    Phase 2 runs this on every response. Phase 3's router decides which
-    responses are worth it, which is the entire point of the tier ladder -- so
-    the call site stays here and only the gate in front of it changes.
+async def resolve(
+    tr: Trace,
+    t0p: list[Finding],
+    resp: str,
+    model: str,
+) -> tuple[str, dict[str, Any]]:
+    """Tier 0 -> router -> tier 1 -> policy -> action. Returns (body, audit).
+
+    The router's float chooses how hard to look. It is stamped on the trace for
+    analysis and then discarded: the action below is resolved by decide.py from
+    the findings themselves (invariant 3).
     """
-    if not T1_ON or not resp.strip():
-        return [], {}
-    return await detclient.check(resp, tr.ctx, T1_NEED)
+    t = time.perf_counter()
+    pol = policy.get(tr.tenant, tr.geo)
+    tr.pol_ver = policy.ver(tr.tenant, tr.geo)
+
+    fnd = list(t0p) + tier0.scan(tier0.norm(resp), side="resp")
+    fnd += tier0.cost(tr.tenant, tr.tok_in, tr.tok_out, len(tr.tools),
+                      TIER_OF.get(model, "mid"), span=(0, min(len(resp), 1)))
+    t0_ms = (time.perf_counter() - t) * 1000
+
+    tr.resp = resp
+    # a session that has already misbehaved starts later turns at a higher tier
+    led = await ledger.score(tr.sess)
+    tr.risk = rt.risk(tr, fnd)
+    tr.tier = rt.tier(tr.risk, pol, floor=ledger.floor(led))
+
+    t1_ms = 0.0
+    if T1_ON and tr.tier >= 1 and resp.strip():
+        t1f, t1l = await detclient.check(resp, tr.ctx, rt.need_for(tr.tier))
+        fnd += t1f
+        t1_ms = float(t1l.get("t1", 0.0))
+
+    tr.fnd = fnd
+    act = dec.decide(fnd, pol, tr.tools)
+
+    body = resp
+    ops: list[dict[str, Any]] = []
+    if act == "edit":
+        body, ops = edit.run(resp, fnd, act)
+        if edit.emptied(ops):
+            # nothing survived the edit, and rewriting is a regenerate, which is
+            # an escalate rather than an edit (invariant 5)
+            act = "escalate"
+    if act == "block":
+        body = BLOCK_MSG
+    elif act == "escalate":
+        body = ESC_MSG
+
+    tr.act = act
+    tr.lat.update({"t0": round(t0_ms, 3), "t1": round(t1_ms, 2),
+                   "decide": round((time.perf_counter() - t) * 1000 - t0_ms - t1_ms, 3)})
+    await ledger.bump(tr.sess, fnd)
+
+    audit = dec.why(fnd, pol, tr.tools, final=act)
+    audit.update({"risk": tr.risk, "tier": tr.tier, "ledger": round(led, 3),
+                  "edits": ops})
+    return body, audit
 
 
 async def _save(tr: Trace) -> None:
@@ -123,37 +181,6 @@ async def _save(tr: Trace) -> None:
     except Exception as e:
         log.warning("trace_save_failed", id=tr.id, err=str(e))
 
-
-def _finish(
-    tr: Trace,
-    resp: str,
-    t0p: list[Finding],
-    t_gen: float,
-    tok_in: int,
-    tok_out: int,
-    model: str,
-    resp_fnd: list[Finding] | None = None,
-) -> Trace:
-    """Common tail: tier 0 on the response, cost math, latency stamps.
-
-    resp_fnd is supplied when the shadow buffer already checked the text window
-    by window; rescanning the whole response would just duplicate its findings.
-    """
-    t = time.perf_counter()
-    fnd = list(t0p) + (resp_fnd if resp_fnd is not None
-                       else tier0.scan(tier0.norm(resp), side="resp"))
-    fnd += tier0.cost(
-        tr.tenant, tok_in, tok_out, len(tr.tools), TIER_OF.get(model, "mid"),
-        span=(0, min(len(resp), 1)),
-    )
-    t0_ms = (time.perf_counter() - t) * 1000
-    tr.resp = resp
-    tr.fnd = fnd
-    tr.tok_in, tr.tok_out = tok_in, tok_out
-    tr.cost = tier0.cost_usd(tok_in, tok_out, TIER_OF.get(model, "mid"))
-    tr.lat = {"gen": round(t_gen, 2), "t0": round(t0_ms, 3),
-              "total": round(t_gen + t0_ms, 2)}
-    return tr
 
 
 # --------------------------------------------------------------- shadow buffer
@@ -341,18 +368,27 @@ async def chat(req: Request) -> Any:
         tok_out = int(u.get("completion_tokens") or _est_tok(txt))
 
     t0p = await t0p_task
-    t1f, t1l = await _t1(tr, txt)
-    tr = _finish(tr, txt, t0p, (time.perf_counter() - t_req) * 1000, tok_in, tok_out, model)
-    if t1f or t1l:
-        tr.fnd += t1f
-        tr.tier = max(tr.tier, 1)
-        tr.lat["t1"] = round(float(t1l.get("t1", 0.0)), 2)
-        tr.lat["total"] = round(tr.lat["total"] + tr.lat["t1"], 2)
+    tr.tok_in, tr.tok_out = tok_in, tok_out
+    tr.cost = tier0.cost_usd(tok_in, tok_out, TIER_OF.get(model, "mid"))
+    body, audit = await resolve(tr, t0p, txt, model)
+    tr.lat["gen"] = round((time.perf_counter() - t_req) * 1000, 2)
+    tr.lat["total"] = round(tr.lat["gen"], 2)
     await _save(tr)
-    log.info("traced", id=tr.id, tenant=tenant, nfnd=len(tr.fnd), lat=tr.lat)
+
+    ch0 = (up.get("choices") or [{}])[0]
+    ch0.setdefault("message", {})["content"] = body
+    if tr.act in ("block", "escalate"):
+        ch0["finish_reason"] = "content_filter"
+    # additive, so a plain OpenAI client ignores it and ours can render it
+    up["cp"] = {"trace": tr.id, "act": tr.act, "tier": tr.tier,
+                "pol_ver": tr.pol_ver, **audit}
+
+    log.info("traced", id=tr.id, tenant=tenant, act=tr.act, tier=tr.tier,
+             risk=tr.risk, nfnd=len(tr.fnd), lat=tr.lat)
     return JSONResponse(
         up,
         headers={"X-CP-Trace": tr.id, "X-CP-Action": tr.act,
+                 "X-CP-Tier": str(tr.tier), "X-CP-Policy": tr.pol_ver,
                  "X-CP-Findings": str(len(tr.fnd))},
     )
 
@@ -452,24 +488,26 @@ async def _tail(
 ) -> None:
     """Post-stream trace write. Runs detached, so a disconnect still traces."""
     t0p = await t0p_task
+    tr.tok_in = tok_in or _est_tok(tr.prompt)
+    tr.tok_out = tok_out or _est_tok(txt)
+    tr.cost = tier0.cost_usd(tr.tok_in, tr.tok_out, TIER_OF.get(model, "mid"))
+
     # The shadow buffer already ran tier 0 window by window, which is what can
-    # stop a span mid-stream. Tier 1 costs tens of milliseconds per call, so on
-    # a stream it runs once over the finished text rather than per sentence.
-    t1f, t1l = await _t1(tr, txt)
-    tr = _finish(tr, txt, t0p, (time.perf_counter() - t_req) * 1000,
-                 tok_in or _est_tok(tr.prompt), tok_out or _est_tok(txt), model,
-                 resp_fnd=sh.fnd if sh is not None else None)
-    if t1f or t1l:
-        tr.fnd += t1f
-        tr.tier = max(tr.tier, 1)
-        tr.lat["t1"] = round(float(t1l.get("t1", 0.0)), 2)
+    # stop a span mid-stream. resolve() re-runs the full ladder over the finished
+    # text so the recorded action comes from the same rulebook the
+    # non-streaming path uses, rather than from a second implementation.
+    held = sh is not None and sh.held
+    _, audit = await resolve(tr, t0p, txt, model)
+
     if sh is not None:
         tr.lat["shadow"] = round(sum(sh.lat), 3)
         tr.lat["shadow_n"] = len(sh.lat)
-        if sh.held:
-            # the buffer actually stopped the span. decide.py takes this over in
-            # phase 3; recording it here keeps the trace honest about what ran.
-            tr.act = "block"
+    if held and RANK[tr.act] < RANK["block"]:
+        # the buffer already withheld the span, so the trace must say block even
+        # if the finished text would have resolved lower
+        tr.act = "block"
+    tr.lat["gen"] = round((time.perf_counter() - t_req) * 1000, 2)
+    tr.lat["total"] = tr.lat["gen"]
     await _save(tr)
     log.info("traced_stream", id=tr.id, tenant=tr.tenant, act=tr.act,
-             nfnd=len(tr.fnd), lat=tr.lat)
+             tier=tr.tier, risk=tr.risk, nfnd=len(tr.fnd), lat=tr.lat)

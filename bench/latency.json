@@ -96,5 +96,27 @@
     "p95_ms": 17.88,
     "ts": 1787845409.0061972,
     "host": "heliosH200 native"
+  },
+  {
+    "phase": 3,
+    "what": "end-to-end verification overhead through the full ladder (T0 + router + decide, T1 when routed)",
+    "n": 100,
+    "p50_ms": 25.02,
+    "p95_ms": 26.7,
+    "tier_dist": {
+      "2": 25,
+      "1": 50,
+      "0": 25
+    },
+    "act_dist": {
+      "allow": 50,
+      "escalate": 25,
+      "annotate": 25
+    },
+    "t1_invocations": 75,
+    "t1_rate": 0.75,
+    "t1_p50_ms": 23.34,
+    "ts": 1787858569.13974,
+    "host": "heliosH200 native"
   }
 ]

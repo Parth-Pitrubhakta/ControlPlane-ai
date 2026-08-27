@@ -69,5 +69,32 @@
     "pass": true,
     "ts": 1787842458.230855,
     "host": "heliosH200 native"
+  },
+  {
+    "phase": 2,
+    "what": "T1 /check end-to-end, 200-token response x 5 chunks, all three detectors",
+    "n": 40,
+    "p50_ms": 60.87,
+    "p95_ms": 65.75,
+    "budget_ms": 80,
+    "pass": true,
+    "detail": {
+      "safety": 37.41,
+      "nli": 49.93,
+      "bias": 53.48,
+      "total": 55.31
+    },
+    "note": "coordinator on 8100 fanning out to one worker process per model",
+    "ts": 1787845409.0061355,
+    "host": "heliosH200 native"
+  },
+  {
+    "phase": 2,
+    "what": "T1 /check, semantic cache hit",
+    "n": 40,
+    "p50_ms": 15.46,
+    "p95_ms": 17.88,
+    "ts": 1787845409.0061972,
+    "host": "heliosH200 native"
   }
 ]

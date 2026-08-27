@@ -118,6 +118,8 @@ async def test_stream_full_read_traces_complete_text(cli):
         if tr is not None:
             break
         await asyncio.sleep(0.05)
+    # The trace records what the model produced; the client sees what the shadow
+    # buffer released. With nothing to hold back they match.
     assert tr["resp"] == "".join(chunks)
     assert tr["tok_out"] > 0
 
@@ -129,3 +131,68 @@ async def test_stream_emits_exactly_one_done(cli):
         async for line in r.aiter_lines():
             lines.append(line)
     assert sum(1 for x in lines if x.strip() == "data: [DONE]") == 1
+
+
+async def test_mock_baseline_is_clean_at_tier0(cli):
+    """The offline rehearsal needs a case where nothing fires."""
+    r = await cli.post("/v1/chat/completions", json=_body("refund window?"))
+    tr = await store.get_trace(r.headers["x-cp-trace"])
+    t0 = [f for f in tr["fnd"] if f["det"].startswith("t0-")]
+    assert t0 == [], f"mock response should be clean at tier 0, got {t0}"
+    assert tr["act"] == "allow"
+
+
+class TestShadow:
+    """The buffer is one of the three things the spec says never to cut."""
+
+    async def _run(self, text, need=None):
+        from api.gateway import Shadow
+        sh = Shadow("CS-BOT", need=need)
+        out = ""
+        for w in text.split(" "):
+            out += await sh.feed(w + " ")
+            if sh.held:
+                break
+        if not sh.held:
+            out += await sh.drain()
+        return sh, out
+
+    async def test_clean_text_passes_through_whole(self):
+        t = "Refunds take three business days. You can track them in the app."
+        sh, out = await self._run(t)
+        assert not sh.held
+        assert out.strip() == t.strip()
+
+    async def test_pii_never_reaches_the_client(self):
+        t = ("Certainly, I can help with that. Your card 4111 1111 1111 1111 is "
+             "the one on file. Anything else?")
+        sh, out = await self._run(t)
+        assert sh.held
+        assert "4111" not in out
+        assert "Certainly" in out          # the clean prefix still streamed
+
+    async def test_released_text_is_always_a_prefix_of_the_response(self):
+        t = "First sentence is fine. Card 4111 1111 1111 1111 here. Third one."
+        sh, out = await self._run(t)
+        assert t.startswith(out.strip()[:len(out.strip())])
+
+    async def test_unverifiable_alone_never_holds(self):
+        # invariant 2: unverifiable tops out at annotate, so it cannot block
+        from api.schemas import Finding
+        from api.gateway import _hold
+        f = [Finding(span=(0, 5), dim="perf", label="unverifiable", sev=1,
+                     conf=0.5, det="nli-v1")]
+        assert _hold(f) is False
+
+    async def test_findings_spans_are_rebased_onto_the_full_response(self):
+        t = "A clean opening sentence here. Then card 4111 1111 1111 1111 shows."
+        sh, _ = await self._run(t)
+        card = [f for f in sh.fnd if f.evid == "card"]
+        assert card, "card should have been found"
+        a, b = card[0].span
+        assert "4111 1111 1111 1111" in t[a:b]
+
+    async def test_whitespace_window_produces_no_finding(self):
+        sh, out = await self._run("Fine sentence.\n\n\nAnother fine one.")
+        assert not sh.held
+        assert [f for f in sh.fnd if f.evid == "empty"] == []

@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 Dim = Literal["perf", "resp", "cost"]
+Side = Literal["prompt", "resp"]
 Act = Literal["allow", "annotate", "edit", "block", "escalate"]
 
 # most-restrictive-wins ordering
@@ -21,7 +22,8 @@ RANK: dict[str, int] = {
 
 
 class Finding(BaseModel):
-    span: tuple[int, int]        # char offsets into the response text
+    span: tuple[int, int]        # char offsets into the text named by `side`
+    side: Side = "resp"          # which text `span` indexes: Trace.prompt or Trace.resp
     dim: Dim
     label: str                   # contradicted | unverifiable | pii | bias | unsafe | inject | cost_anom
     sev: int                     # 0..3

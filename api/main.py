@@ -10,7 +10,7 @@ from typing import AsyncIterator
 import structlog
 from fastapi import FastAPI
 
-from api import detclient, store
+from api import detclient, gateway, store
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
@@ -38,6 +38,7 @@ log = structlog.get_logger("api")
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await store.open_store()
     await detclient.open_det()
+    await gateway.open_gw()
     try:
         await store.ensure_idx()
     except Exception as e:
@@ -45,6 +46,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         log.warning("idx_failed", err=str(e))
     log.info("boot", mock_h200=detclient.MOCK, det_url=detclient.DET_URL)
     yield
+    await gateway.close_gw()
     await detclient.close_det()
     await store.close_store()
 
@@ -57,6 +59,7 @@ def create_app() -> FastAPI:
     async def health() -> dict:
         return {"status": "ok", **await store.ping(), **await detclient.health()}
 
+    app.include_router(gateway.router)
     return app
 
 

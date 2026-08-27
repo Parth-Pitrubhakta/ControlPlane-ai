@@ -7,5 +7,67 @@
     "p95_ms": 7.279,
     "ts": 1787841788.5654094,
     "host": "heliosH200 native"
+  },
+  {
+    "what": "T0 full scan (pii+inject+deny+fmt), regex backend",
+    "n": 200,
+    "p50_ms": 0.276,
+    "p95_ms": 0.341,
+    "max_ms": 0.397,
+    "phase": 1,
+    "ts": 1787842113.8340707,
+    "host": "heliosH200 native"
+  },
+  {
+    "what": "T0 pii regex only",
+    "n": 200,
+    "p50_ms": 0.112,
+    "p95_ms": 0.137,
+    "max_ms": 0.168,
+    "phase": 1,
+    "ts": 1787842113.8341115,
+    "host": "heliosH200 native"
+  },
+  {
+    "what": "T0 inject only",
+    "n": 200,
+    "p50_ms": 0.151,
+    "p95_ms": 0.177,
+    "max_ms": 0.196,
+    "phase": 1,
+    "ts": 1787842113.8341193,
+    "host": "heliosH200 native"
+  },
+  {
+    "what": "T0 cost arithmetic",
+    "n": 200,
+    "p50_ms": 0.001,
+    "p95_ms": 0.001,
+    "max_ms": 0.001,
+    "phase": 1,
+    "ts": 1787842113.8341248,
+    "host": "heliosH200 native"
+  },
+  {
+    "what": "T0 pii presidio (spacy en_core_web_sm)",
+    "n": 200,
+    "p50_ms": 12.63,
+    "p95_ms": 14.892,
+    "max_ms": 17.199,
+    "phase": 1,
+    "ts": 1787842113.8341296,
+    "host": "heliosH200 native"
+  },
+  {
+    "phase": 1,
+    "what": "T0 verification overhead measured in-request (prompt scan awaited + response scan + cost)",
+    "n": 200,
+    "p50_ms": 0.435,
+    "p95_ms": 0.491,
+    "max_ms": 3.273,
+    "budget_ms": 5,
+    "pass": true,
+    "ts": 1787842458.230855,
+    "host": "heliosH200 native"
   }
 ]

@@ -120,3 +120,12 @@ async def test_stream_full_read_traces_complete_text(cli):
         await asyncio.sleep(0.05)
     assert tr["resp"] == "".join(chunks)
     assert tr["tok_out"] > 0
+
+
+async def test_stream_emits_exactly_one_done(cli):
+    lines = []
+    async with cli.stream("POST", "/v1/chat/completions",
+                          json=_body("refund window?", stream=True)) as r:
+        async for line in r.aiter_lines():
+            lines.append(line)
+    assert sum(1 for x in lines if x.strip() == "data: [DONE]") == 1

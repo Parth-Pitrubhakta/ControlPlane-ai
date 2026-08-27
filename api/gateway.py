@@ -238,6 +238,7 @@ async def _stream(
     """
     acc: list[str] = []
     tok_in = tok_out = 0
+    done = False   # upstream already sent [DONE]; do not send a second one
     try:
         if MOCK:
             async for w in _mock_stream(model):
@@ -263,6 +264,7 @@ async def _stream(
                         continue
                     payload = line[6:].strip()
                     if payload == "[DONE]":
+                        done = True
                         continue
                     try:
                         ch = json.loads(payload)
@@ -276,7 +278,8 @@ async def _stream(
                     if u:
                         tok_in = int(u.get("prompt_tokens") or 0)
                         tok_out = int(u.get("completion_tokens") or 0)
-        yield b"data: [DONE]\n\n"
+        if not done:
+            yield b"data: [DONE]\n\n"
     finally:
         _bg(_tail(tr, "".join(acc), t0p_task, t_req, tok_in, tok_out, model))
 

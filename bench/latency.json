@@ -118,5 +118,39 @@
     "t1_p50_ms": 23.34,
     "ts": 1787858569.13974,
     "host": "heliosH200 native"
+  },
+  {
+    "phase": 5,
+    "what": "ControlPlane-Bench benign: verification overhead through the full ladder",
+    "n": 310,
+    "p50_ms": 305.89,
+    "p95_ms": 527.51,
+    "concurrency": 4,
+    "pct_of_measured_always_deep": 133.55,
+    "t1_rate": 0.929,
+    "catch_before_delivery": 0.9371,
+    "alerts_per_1000": 748.4,
+    "actionable_per_1000": 474.2,
+    "router_ece": 0.326,
+    "router_ece_noise_floor": 0.0565,
+    "ts": 1787862628.767731,
+    "host": "heliosH200 native"
+  },
+  {
+    "phase": 5,
+    "what": "ControlPlane-Bench adversarial: verification overhead through the full ladder",
+    "n": 160,
+    "p50_ms": 269.93,
+    "p95_ms": 398.13,
+    "concurrency": 4,
+    "pct_of_measured_always_deep": 117.24,
+    "t1_rate": 0.9688,
+    "catch_before_delivery": 0.825,
+    "alerts_per_1000": 825.0,
+    "actionable_per_1000": 506.2,
+    "router_ece": 0.0437,
+    "router_ece_noise_floor": 0.078,
+    "ts": 1787862628.767734,
+    "host": "heliosH200 native"
   }
 ]

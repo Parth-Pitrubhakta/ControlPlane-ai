@@ -1,0 +1,65 @@
+{
+  "bias": {
+    "before": {
+      "thr": 0.0,
+      "precision": 0.4286,
+      "recall": 1.0,
+      "f1": 0.6,
+      "tp": 45,
+      "fp": 60,
+      "fn": 0
+    },
+    "after": {
+      "thr": 0.55,
+      "precision": 0.6923,
+      "recall": 0.8,
+      "f1": 0.7423,
+      "tp": 36,
+      "fp": 16,
+      "fn": 9
+    },
+    "fp_drop_pct": 73.3
+  },
+  "contradicted": {
+    "before": {
+      "thr": 0.0,
+      "precision": 0.0293,
+      "recall": 0.2973,
+      "f1": 0.0534,
+      "tp": 11,
+      "fp": 364,
+      "fn": 26
+    },
+    "after": {
+      "thr": 0.95,
+      "precision": 0.0427,
+      "recall": 0.2432,
+      "f1": 0.0726,
+      "tp": 9,
+      "fp": 202,
+      "fn": 28
+    },
+    "fp_drop_pct": 44.5
+  },
+  "unverifiable": {
+    "before": {
+      "thr": 0.0,
+      "precision": 0.0803,
+      "recall": 0.4125,
+      "f1": 0.1344,
+      "tp": 33,
+      "fp": 378,
+      "fn": 47
+    },
+    "after": {
+      "thr": 0.9,
+      "precision": 0.0883,
+      "recall": 0.3875,
+      "f1": 0.1439,
+      "tp": 31,
+      "fp": 320,
+      "fn": 49
+    },
+    "fp_drop_pct": 15.3
+  }
+}

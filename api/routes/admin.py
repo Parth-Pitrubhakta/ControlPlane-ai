@@ -13,7 +13,7 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Query
 
-from api import policy, router as rt, store
+from api import policy, probe, retention, router as rt, store
 from api.schemas import Policy
 
 router = APIRouter(prefix="/api", tags=["admin"])
@@ -62,6 +62,26 @@ async def put_policy(doc: dict[str, Any] = Body(...)) -> dict[str, Any]:
 @router.get("/router")
 async def router_info() -> dict[str, Any]:
     return rt.meta()
+
+
+@router.get("/probes")
+async def probe_stats() -> dict[str, Any]:
+    """The router's measured false-negative rate, from sampled deep checks."""
+    return {"enabled": probe.ON, **await probe.stats()}
+
+
+@router.get("/retention")
+async def retention_status() -> dict[str, Any]:
+    return {"enabled": retention.ON, "every_s": retention.SWEEP_S,
+            "last": retention.last(),
+            "windows": {f"{t}/{g}": p.retention_days
+                        for (t, g), p in sorted(policy._cache.items())}}
+
+
+@router.post("/retention/sweep")
+async def retention_sweep(dry: bool = Query(True)) -> dict[str, Any]:
+    """Run the sweep now. Defaults to a dry run: deletion is irreversible."""
+    return await retention.sweep(dry=dry)
 
 
 @router.post("/recalibrate")

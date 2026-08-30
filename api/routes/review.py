@@ -44,7 +44,12 @@ async def queue(limit: int = Query(50, le=200), tenant: str | None = None,
     rows = []
     cur = store.db()["traces"].find(q, {"_id": 0}).sort("ts", -1).limit(limit)
     async for t in cur:
+        # tier 3 already looked at this one; show the reviewer what it thought
+        j = await store.db()["probes"].find_one(
+            {"kind": "judge", "trace": t["id"]}, {"_id": 0},
+            sort=[("ts", -1)])
         rows.append({
+            "judge": {k: j[k] for k in ("verdict", "should_be", "why")} if j else None,
             "id": t["id"], "ts": t.get("ts"), "tenant": t.get("tenant"),
             "geo": t.get("geo"), "act": t.get("act"), "tier": t.get("tier"),
             "risk": t.get("risk"), "pol_ver": t.get("pol_ver"),

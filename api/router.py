@@ -259,5 +259,14 @@ def tier(risk_v: float, pol: Policy, floor: int = 0) -> int:
 
 
 def need_for(t: int) -> list[str]:
-    """Which detectors a tier turns on."""
-    return ["nli", "safety", "bias"] if t >= 1 else []
+    """Which detectors a tier turns on.
+
+    Tier 2 swaps nli for t2. They answer the same question -- is this grounded --
+    but t2 decomposes the response into claims and retrieves evidence per claim,
+    which is the expensive way and the accurate one.
+    """
+    if t >= 2:
+        return ["t2", "safety", "bias"]
+    if t >= 1:
+        return ["nli", "safety", "bias"]
+    return []

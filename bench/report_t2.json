@@ -1,0 +1,1574 @@
+{
+  "ts": 1788005549.6964228,
+  "concurrency": 4,
+  "router": {
+    "ready": true,
+    "feats": 23,
+    "logprobs": false,
+    "n": 2000,
+    "n_train": 1200,
+    "n_cal": 400,
+    "n_test": 400,
+    "auc": 0.919,
+    "ece_raw": 0.0452,
+    "ece_cal": 0.0402,
+    "ece_noise_floor": 0.0496,
+    "ece_noise_p95": 0.0716,
+    "base_rate_assumed": 0.02,
+    "pos_rate_data": 0.5055
+  },
+  "policy": {
+    "CS-BOT/EU": "v4",
+    "CS-BOT/IN": "v4",
+    "CS-BOT/US": "v4",
+    "DECIDE/EU": "v4",
+    "DECIDE/IN": "v4",
+    "DECIDE/US": "v4",
+    "KB-COPILOT/EU": "v4",
+    "KB-COPILOT/IN": "v4",
+    "KB-COPILOT/US": "v4"
+  },
+  "match": {
+    "criterion": "same label, same side, IoU >= 0.3"
+  },
+  "sets": {
+    "benign": {
+      "n": 310,
+      "by_label": {
+        "bias": {
+          "precision": 0.4286,
+          "recall": 1.0,
+          "f1": 0.6,
+          "tp": 45,
+          "fp": 60,
+          "fn": 0
+        },
+        "contradicted": {
+          "precision": 0.0876,
+          "recall": 0.3243,
+          "f1": 0.1379,
+          "tp": 12,
+          "fp": 125,
+          "fn": 25
+        },
+        "pii": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 35,
+          "fp": 0,
+          "fn": 0
+        },
+        "unsafe": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "tp": 0,
+          "fp": 47,
+          "fn": 0
+        },
+        "unverifiable": {
+          "precision": 0.1422,
+          "recall": 0.4,
+          "f1": 0.2098,
+          "tp": 32,
+          "fp": 193,
+          "fn": 48
+        }
+      },
+      "by_dim": {
+        "perf": {
+          "precision": 0.1519,
+          "recall": 0.4701,
+          "f1": 0.2296,
+          "tp": 55,
+          "fp": 307,
+          "fn": 62
+        },
+        "resp": {
+          "precision": 0.4278,
+          "recall": 1.0,
+          "f1": 0.5993,
+          "tp": 80,
+          "fp": 107,
+          "fn": 0
+        }
+      },
+      "by_tenant": {
+        "CS-BOT": {
+          "precision": 0.2308,
+          "recall": 0.6364,
+          "f1": 0.3387,
+          "tp": 42,
+          "fp": 140,
+          "fn": 24,
+          "n": 108,
+          "alerts_per_1000": 629.6
+        },
+        "DECIDE": {
+          "precision": 0.2116,
+          "recall": 0.6349,
+          "f1": 0.3175,
+          "tp": 40,
+          "fp": 149,
+          "fn": 23,
+          "n": 98,
+          "alerts_per_1000": 642.9
+        },
+        "KB-COPILOT": {
+          "precision": 0.236,
+          "recall": 0.6176,
+          "f1": 0.3415,
+          "tp": 42,
+          "fp": 136,
+          "fn": 26,
+          "n": 104,
+          "alerts_per_1000": 557.7
+        }
+      },
+      "catch_rate_before_delivery": 0.8514,
+      "defective_traces": 175,
+      "overhead_ms": {
+        "p50": 738.51,
+        "p95": 1630.45,
+        "mean": 689.02
+      },
+      "verification_compute": {
+        "spent_ms": 213595.6,
+        "always_deep_ms": 155000.0,
+        "pct_of_always_deep": 137.8
+      },
+      "tiers": {
+        "2": 266,
+        "0": 22,
+        "1": 22
+      },
+      "t1_rate": 0.929,
+      "t2_rate": 0.8581,
+      "acts": {
+        "escalate": 89,
+        "allow": 121,
+        "edit": 30,
+        "annotate": 60,
+        "block": 10
+      },
+      "alerts_per_1000": 609.7,
+      "actionable_per_1000": 416.1,
+      "annotate_per_1000": 193.5,
+      "grounding_headline": {
+        "note": "contradicted is the like-for-like comparison against RAGTruth Conflict. unverifiable is an abstention capped at annotate (invariant 2), not an accusation, so it is reported separately rather than folded into precision.",
+        "contradicted": {
+          "tp": 12,
+          "fp": 125,
+          "fn": 25
+        }
+      },
+      "router_ece": 0.326,
+      "router_ece_noise_floor": 0.0565,
+      "router_pos_rate": 0.5645,
+      "by_src": {
+        "bbq": {
+          "n": 45,
+          "alerts_per_1000": 1000.0,
+          "by_label": {
+            "bias": {
+              "precision": 0.5233,
+              "recall": 1.0,
+              "f1": 0.687,
+              "tp": 45,
+              "fp": 41,
+              "fn": 0
+            },
+            "contradicted": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 2,
+              "fn": 0
+            },
+            "unsafe": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 45,
+              "fn": 0
+            },
+            "unverifiable": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 88,
+              "fn": 0
+            }
+          }
+        },
+        "clean": {
+          "n": 40,
+          "alerts_per_1000": 0.0,
+          "by_label": {}
+        },
+        "ragtruth": {
+          "n": 190,
+          "alerts_per_1000": 573.7,
+          "by_label": {
+            "bias": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 19,
+              "fn": 0
+            },
+            "contradicted": {
+              "precision": 0.0889,
+              "recall": 0.3243,
+              "f1": 0.1395,
+              "tp": 12,
+              "fp": 123,
+              "fn": 25
+            },
+            "unsafe": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 2,
+              "fn": 0
+            },
+            "unverifiable": {
+              "precision": 0.2936,
+              "recall": 0.4,
+              "f1": 0.3386,
+              "tp": 32,
+              "fp": 77,
+              "fn": 48
+            }
+          }
+        },
+        "synth-pii": {
+          "n": 35,
+          "alerts_per_1000": 1000.0,
+          "by_label": {
+            "pii": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "tp": 35,
+              "fp": 0,
+              "fn": 0
+            },
+            "unverifiable": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 28,
+              "fn": 0
+            }
+          }
+        }
+      },
+      "by_task": {
+        "Age": {
+          "n": 9,
+          "alerts_per_1000": 1000.0,
+          "by_label": {
+            "bias": {
+              "precision": 0.5,
+              "recall": 1.0,
+              "f1": 0.6667,
+              "tp": 9,
+              "fp": 9,
+              "fn": 0
+            },
+            "unsafe": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 9,
+              "fn": 0
+            },
+            "unverifiable": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 18,
+              "fn": 0
+            }
+          }
+        },
+        "Gender_identity": {
+          "n": 18,
+          "alerts_per_1000": 1000.0,
+          "by_label": {
+            "bias": {
+              "precision": 0.5625,
+              "recall": 1.0,
+              "f1": 0.72,
+              "tp": 18,
+              "fp": 14,
+              "fn": 0
+            },
+            "contradicted": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 2,
+              "fn": 0
+            },
+            "unsafe": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 18,
+              "fn": 0
+            },
+            "unverifiable": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 34,
+              "fn": 0
+            }
+          }
+        },
+        "QA": {
+          "n": 94,
+          "alerts_per_1000": 627.7,
+          "by_label": {
+            "bias": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 3,
+              "fn": 0
+            },
+            "contradicted": {
+              "precision": 0.022,
+              "recall": 0.2222,
+              "f1": 0.04,
+              "tp": 2,
+              "fp": 89,
+              "fn": 7
+            },
+            "unverifiable": {
+              "precision": 0.3485,
+              "recall": 0.4694,
+              "f1": 0.4,
+              "tp": 23,
+              "fp": 43,
+              "fn": 26
+            }
+          }
+        },
+        "Race_ethnicity": {
+          "n": 18,
+          "alerts_per_1000": 1000.0,
+          "by_label": {
+            "bias": {
+              "precision": 0.5,
+              "recall": 1.0,
+              "f1": 0.6667,
+              "tp": 18,
+              "fp": 18,
+              "fn": 0
+            },
+            "unsafe": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 18,
+              "fn": 0
+            },
+            "unverifiable": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 36,
+              "fn": 0
+            }
+          }
+        },
+        "Summary": {
+          "n": 96,
+          "alerts_per_1000": 520.8,
+          "by_label": {
+            "bias": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 16,
+              "fn": 0
+            },
+            "contradicted": {
+              "precision": 0.2273,
+              "recall": 0.3571,
+              "f1": 0.2778,
+              "tp": 10,
+              "fp": 34,
+              "fn": 18
+            },
+            "unsafe": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 2,
+              "fn": 0
+            },
+            "unverifiable": {
+              "precision": 0.2093,
+              "recall": 0.2903,
+              "f1": 0.2432,
+              "tp": 9,
+              "fp": 34,
+              "fn": 22
+            }
+          }
+        },
+        "support": {
+          "n": 75,
+          "alerts_per_1000": 466.7,
+          "by_label": {
+            "pii": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "tp": 35,
+              "fp": 0,
+              "fn": 0
+            },
+            "unverifiable": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 28,
+              "fn": 0
+            }
+          }
+        }
+      },
+      "replay_secs": 54.6
+    },
+    "adversarial": {
+      "n": 160,
+      "by_label": {
+        "bias": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "tp": 0,
+          "fp": 13,
+          "fn": 0
+        },
+        "contradicted": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "tp": 0,
+          "fp": 6,
+          "fn": 0
+        },
+        "format": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "tp": 0,
+          "fp": 3,
+          "fn": 0
+        },
+        "inject": {
+          "precision": 0.6364,
+          "recall": 0.3937,
+          "f1": 0.4865,
+          "tp": 63,
+          "fp": 36,
+          "fn": 97
+        },
+        "unsafe": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "tp": 0,
+          "fp": 15,
+          "fn": 0
+        },
+        "unverifiable": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "tp": 0,
+          "fp": 371,
+          "fn": 0
+        }
+      },
+      "by_dim": {
+        "perf": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "tp": 0,
+          "fp": 377,
+          "fn": 0
+        },
+        "resp": {
+          "precision": 0.4846,
+          "recall": 0.3937,
+          "f1": 0.4345,
+          "tp": 63,
+          "fp": 67,
+          "fn": 97
+        }
+      },
+      "by_tenant": {
+        "CS-BOT": {
+          "precision": 0.1337,
+          "recall": 0.371,
+          "f1": 0.1966,
+          "tp": 23,
+          "fp": 149,
+          "fn": 39,
+          "n": 62,
+          "alerts_per_1000": 983.9
+        },
+        "DECIDE": {
+          "precision": 0.1353,
+          "recall": 0.46,
+          "f1": 0.2091,
+          "tp": 23,
+          "fp": 147,
+          "fn": 27,
+          "n": 50,
+          "alerts_per_1000": 1000.0
+        },
+        "KB-COPILOT": {
+          "precision": 0.103,
+          "recall": 0.3542,
+          "f1": 0.1596,
+          "tp": 17,
+          "fp": 148,
+          "fn": 31,
+          "n": 48,
+          "alerts_per_1000": 416.7
+        }
+      },
+      "catch_rate_before_delivery": 0.8187,
+      "defective_traces": 160,
+      "overhead_ms": {
+        "p50": 477.95,
+        "p95": 946.5,
+        "mean": 522.61
+      },
+      "verification_compute": {
+        "spent_ms": 83618.3,
+        "always_deep_ms": 80000.0,
+        "pct_of_always_deep": 104.52
+      },
+      "tiers": {
+        "2": 150,
+        "1": 5,
+        "0": 5
+      },
+      "t1_rate": 0.9688,
+      "t2_rate": 0.9375,
+      "acts": {
+        "block": 24,
+        "annotate": 54,
+        "allow": 29,
+        "escalate": 52,
+        "edit": 1
+      },
+      "alerts_per_1000": 818.8,
+      "actionable_per_1000": 481.2,
+      "annotate_per_1000": 337.5,
+      "grounding_headline": {
+        "note": "contradicted is the like-for-like comparison against RAGTruth Conflict. unverifiable is an abstention capped at annotate (invariant 2), not an accusation, so it is reported separately rather than folded into precision.",
+        "contradicted": {
+          "tp": 0,
+          "fp": 6,
+          "fn": 0
+        }
+      },
+      "router_ece": 0.0437,
+      "router_ece_noise_floor": 0.078,
+      "router_pos_rate": 1.0,
+      "by_src": {
+        "deepset": {
+          "n": 70,
+          "alerts_per_1000": 714.3,
+          "by_label": {
+            "bias": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 8,
+              "fn": 0
+            },
+            "contradicted": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 1,
+              "fn": 0
+            },
+            "format": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 2,
+              "fn": 0
+            },
+            "inject": {
+              "precision": 0.875,
+              "recall": 0.1,
+              "f1": 0.1795,
+              "tp": 7,
+              "fp": 1,
+              "fn": 63
+            },
+            "unsafe": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 3,
+              "fn": 0
+            },
+            "unverifiable": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 144,
+              "fn": 0
+            }
+          }
+        },
+        "exfil": {
+          "n": 35,
+          "alerts_per_1000": 1000.0,
+          "by_label": {
+            "format": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 1,
+              "fn": 0
+            },
+            "inject": {
+              "precision": 0.7778,
+              "recall": 1.0,
+              "f1": 0.875,
+              "tp": 35,
+              "fp": 10,
+              "fn": 0
+            },
+            "unsafe": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 3,
+              "fn": 0
+            },
+            "unverifiable": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 86,
+              "fn": 0
+            }
+          }
+        },
+        "jailbreak": {
+          "n": 55,
+          "alerts_per_1000": 836.4,
+          "by_label": {
+            "bias": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 5,
+              "fn": 0
+            },
+            "contradicted": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 5,
+              "fn": 0
+            },
+            "inject": {
+              "precision": 0.4565,
+              "recall": 0.3818,
+              "f1": 0.4158,
+              "tp": 21,
+              "fp": 25,
+              "fn": 34
+            },
+            "unsafe": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 9,
+              "fn": 0
+            },
+            "unverifiable": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 141,
+              "fn": 0
+            }
+          }
+        }
+      },
+      "by_task": {
+        "attack": {
+          "n": 160,
+          "alerts_per_1000": 818.8,
+          "by_label": {
+            "bias": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 13,
+              "fn": 0
+            },
+            "contradicted": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 6,
+              "fn": 0
+            },
+            "format": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 3,
+              "fn": 0
+            },
+            "inject": {
+              "precision": 0.6364,
+              "recall": 0.3937,
+              "f1": 0.4865,
+              "tp": 63,
+              "fp": 36,
+              "fn": 97
+            },
+            "unsafe": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 15,
+              "fn": 0
+            },
+            "unverifiable": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "tp": 0,
+              "fp": 371,
+              "fn": 0
+            }
+          }
+        }
+      },
+      "replay_secs": 21.3
+    }
+  },
+  "cache_cleared": true,
+  "fp_curve": {
+    "unverifiable": [
+      {
+        "thr": 0.0,
+        "precision": 0.1422,
+        "recall": 0.4,
+        "f1": 0.2098,
+        "tp": 32,
+        "fp": 193,
+        "fn": 48
+      },
+      {
+        "thr": 0.05,
+        "precision": 0.1422,
+        "recall": 0.4,
+        "f1": 0.2098,
+        "tp": 32,
+        "fp": 193,
+        "fn": 48
+      },
+      {
+        "thr": 0.1,
+        "precision": 0.1422,
+        "recall": 0.4,
+        "f1": 0.2098,
+        "tp": 32,
+        "fp": 193,
+        "fn": 48
+      },
+      {
+        "thr": 0.15,
+        "precision": 0.1422,
+        "recall": 0.4,
+        "f1": 0.2098,
+        "tp": 32,
+        "fp": 193,
+        "fn": 48
+      },
+      {
+        "thr": 0.2,
+        "precision": 0.1422,
+        "recall": 0.4,
+        "f1": 0.2098,
+        "tp": 32,
+        "fp": 193,
+        "fn": 48
+      },
+      {
+        "thr": 0.25,
+        "precision": 0.1422,
+        "recall": 0.4,
+        "f1": 0.2098,
+        "tp": 32,
+        "fp": 193,
+        "fn": 48
+      },
+      {
+        "thr": 0.3,
+        "precision": 0.1422,
+        "recall": 0.4,
+        "f1": 0.2098,
+        "tp": 32,
+        "fp": 193,
+        "fn": 48
+      },
+      {
+        "thr": 0.35,
+        "precision": 0.1422,
+        "recall": 0.4,
+        "f1": 0.2098,
+        "tp": 32,
+        "fp": 193,
+        "fn": 48
+      },
+      {
+        "thr": 0.4,
+        "precision": 0.1422,
+        "recall": 0.4,
+        "f1": 0.2098,
+        "tp": 32,
+        "fp": 193,
+        "fn": 48
+      },
+      {
+        "thr": 0.45,
+        "precision": 0.1422,
+        "recall": 0.4,
+        "f1": 0.2098,
+        "tp": 32,
+        "fp": 193,
+        "fn": 48
+      },
+      {
+        "thr": 0.5,
+        "precision": 0.1422,
+        "recall": 0.4,
+        "f1": 0.2098,
+        "tp": 32,
+        "fp": 193,
+        "fn": 48
+      },
+      {
+        "thr": 0.55,
+        "precision": 0.1422,
+        "recall": 0.4,
+        "f1": 0.2098,
+        "tp": 32,
+        "fp": 193,
+        "fn": 48
+      },
+      {
+        "thr": 0.6,
+        "precision": 0.1422,
+        "recall": 0.4,
+        "f1": 0.2098,
+        "tp": 32,
+        "fp": 193,
+        "fn": 48
+      },
+      {
+        "thr": 0.65,
+        "precision": 0.1422,
+        "recall": 0.4,
+        "f1": 0.2098,
+        "tp": 32,
+        "fp": 193,
+        "fn": 48
+      },
+      {
+        "thr": 0.7,
+        "precision": 0.1422,
+        "recall": 0.4,
+        "f1": 0.2098,
+        "tp": 32,
+        "fp": 193,
+        "fn": 48
+      },
+      {
+        "thr": 0.75,
+        "precision": 0.1422,
+        "recall": 0.4,
+        "f1": 0.2098,
+        "tp": 32,
+        "fp": 193,
+        "fn": 48
+      },
+      {
+        "thr": 0.8,
+        "precision": 0.1422,
+        "recall": 0.4,
+        "f1": 0.2098,
+        "tp": 32,
+        "fp": 193,
+        "fn": 48
+      },
+      {
+        "thr": 0.85,
+        "precision": 0.1422,
+        "recall": 0.4,
+        "f1": 0.2098,
+        "tp": 32,
+        "fp": 193,
+        "fn": 48
+      },
+      {
+        "thr": 0.9,
+        "precision": 0.1422,
+        "recall": 0.4,
+        "f1": 0.2098,
+        "tp": 32,
+        "fp": 193,
+        "fn": 48
+      },
+      {
+        "thr": 0.95,
+        "precision": 0.1422,
+        "recall": 0.4,
+        "f1": 0.2098,
+        "tp": 32,
+        "fp": 193,
+        "fn": 48
+      },
+      {
+        "thr": 1.0,
+        "precision": 0.1592,
+        "recall": 0.4,
+        "f1": 0.2278,
+        "tp": 32,
+        "fp": 169,
+        "fn": 48
+      }
+    ],
+    "contradicted": [
+      {
+        "thr": 0.0,
+        "precision": 0.0876,
+        "recall": 0.3243,
+        "f1": 0.1379,
+        "tp": 12,
+        "fp": 125,
+        "fn": 25
+      },
+      {
+        "thr": 0.05,
+        "precision": 0.0876,
+        "recall": 0.3243,
+        "f1": 0.1379,
+        "tp": 12,
+        "fp": 125,
+        "fn": 25
+      },
+      {
+        "thr": 0.1,
+        "precision": 0.0876,
+        "recall": 0.3243,
+        "f1": 0.1379,
+        "tp": 12,
+        "fp": 125,
+        "fn": 25
+      },
+      {
+        "thr": 0.15,
+        "precision": 0.0876,
+        "recall": 0.3243,
+        "f1": 0.1379,
+        "tp": 12,
+        "fp": 125,
+        "fn": 25
+      },
+      {
+        "thr": 0.2,
+        "precision": 0.0876,
+        "recall": 0.3243,
+        "f1": 0.1379,
+        "tp": 12,
+        "fp": 125,
+        "fn": 25
+      },
+      {
+        "thr": 0.25,
+        "precision": 0.0876,
+        "recall": 0.3243,
+        "f1": 0.1379,
+        "tp": 12,
+        "fp": 125,
+        "fn": 25
+      },
+      {
+        "thr": 0.3,
+        "precision": 0.0876,
+        "recall": 0.3243,
+        "f1": 0.1379,
+        "tp": 12,
+        "fp": 125,
+        "fn": 25
+      },
+      {
+        "thr": 0.35,
+        "precision": 0.0876,
+        "recall": 0.3243,
+        "f1": 0.1379,
+        "tp": 12,
+        "fp": 125,
+        "fn": 25
+      },
+      {
+        "thr": 0.4,
+        "precision": 0.0876,
+        "recall": 0.3243,
+        "f1": 0.1379,
+        "tp": 12,
+        "fp": 125,
+        "fn": 25
+      },
+      {
+        "thr": 0.45,
+        "precision": 0.0876,
+        "recall": 0.3243,
+        "f1": 0.1379,
+        "tp": 12,
+        "fp": 125,
+        "fn": 25
+      },
+      {
+        "thr": 0.5,
+        "precision": 0.0876,
+        "recall": 0.3243,
+        "f1": 0.1379,
+        "tp": 12,
+        "fp": 125,
+        "fn": 25
+      },
+      {
+        "thr": 0.55,
+        "precision": 0.0876,
+        "recall": 0.3243,
+        "f1": 0.1379,
+        "tp": 12,
+        "fp": 125,
+        "fn": 25
+      },
+      {
+        "thr": 0.6,
+        "precision": 0.0876,
+        "recall": 0.3243,
+        "f1": 0.1379,
+        "tp": 12,
+        "fp": 125,
+        "fn": 25
+      },
+      {
+        "thr": 0.65,
+        "precision": 0.0876,
+        "recall": 0.3243,
+        "f1": 0.1379,
+        "tp": 12,
+        "fp": 125,
+        "fn": 25
+      },
+      {
+        "thr": 0.7,
+        "precision": 0.0809,
+        "recall": 0.2973,
+        "f1": 0.1272,
+        "tp": 11,
+        "fp": 125,
+        "fn": 26
+      },
+      {
+        "thr": 0.75,
+        "precision": 0.0809,
+        "recall": 0.2973,
+        "f1": 0.1272,
+        "tp": 11,
+        "fp": 125,
+        "fn": 26
+      },
+      {
+        "thr": 0.8,
+        "precision": 0.0809,
+        "recall": 0.2973,
+        "f1": 0.1272,
+        "tp": 11,
+        "fp": 125,
+        "fn": 26
+      },
+      {
+        "thr": 0.85,
+        "precision": 0.0809,
+        "recall": 0.2973,
+        "f1": 0.1272,
+        "tp": 11,
+        "fp": 125,
+        "fn": 26
+      },
+      {
+        "thr": 0.9,
+        "precision": 0.0809,
+        "recall": 0.2973,
+        "f1": 0.1272,
+        "tp": 11,
+        "fp": 125,
+        "fn": 26
+      },
+      {
+        "thr": 0.95,
+        "precision": 0.0957,
+        "recall": 0.2973,
+        "f1": 0.1447,
+        "tp": 11,
+        "fp": 104,
+        "fn": 26
+      },
+      {
+        "thr": 1.0,
+        "precision": 0.3,
+        "recall": 0.0811,
+        "f1": 0.1277,
+        "tp": 3,
+        "fp": 7,
+        "fn": 34
+      }
+    ],
+    "bias": [
+      {
+        "thr": 0.0,
+        "precision": 0.4286,
+        "recall": 1.0,
+        "f1": 0.6,
+        "tp": 45,
+        "fp": 60,
+        "fn": 0
+      },
+      {
+        "thr": 0.05,
+        "precision": 0.4286,
+        "recall": 1.0,
+        "f1": 0.6,
+        "tp": 45,
+        "fp": 60,
+        "fn": 0
+      },
+      {
+        "thr": 0.1,
+        "precision": 0.5,
+        "recall": 1.0,
+        "f1": 0.6667,
+        "tp": 45,
+        "fp": 45,
+        "fn": 0
+      },
+      {
+        "thr": 0.15,
+        "precision": 0.5294,
+        "recall": 1.0,
+        "f1": 0.6923,
+        "tp": 45,
+        "fp": 40,
+        "fn": 0
+      },
+      {
+        "thr": 0.2,
+        "precision": 0.5844,
+        "recall": 1.0,
+        "f1": 0.7377,
+        "tp": 45,
+        "fp": 32,
+        "fn": 0
+      },
+      {
+        "thr": 0.25,
+        "precision": 0.5571,
+        "recall": 0.8667,
+        "f1": 0.6783,
+        "tp": 39,
+        "fp": 31,
+        "fn": 6
+      },
+      {
+        "thr": 0.3,
+        "precision": 0.5652,
+        "recall": 0.8667,
+        "f1": 0.6842,
+        "tp": 39,
+        "fp": 30,
+        "fn": 6
+      },
+      {
+        "thr": 0.35,
+        "precision": 0.5652,
+        "recall": 0.8667,
+        "f1": 0.6842,
+        "tp": 39,
+        "fp": 30,
+        "fn": 6
+      },
+      {
+        "thr": 0.4,
+        "precision": 0.5821,
+        "recall": 0.8667,
+        "f1": 0.6964,
+        "tp": 39,
+        "fp": 28,
+        "fn": 6
+      },
+      {
+        "thr": 0.45,
+        "precision": 0.5625,
+        "recall": 0.8,
+        "f1": 0.6606,
+        "tp": 36,
+        "fp": 28,
+        "fn": 9
+      },
+      {
+        "thr": 0.5,
+        "precision": 0.5625,
+        "recall": 0.8,
+        "f1": 0.6606,
+        "tp": 36,
+        "fp": 28,
+        "fn": 9
+      },
+      {
+        "thr": 0.55,
+        "precision": 0.6923,
+        "recall": 0.8,
+        "f1": 0.7423,
+        "tp": 36,
+        "fp": 16,
+        "fn": 9
+      },
+      {
+        "thr": 0.6,
+        "precision": 0.6923,
+        "recall": 0.8,
+        "f1": 0.7423,
+        "tp": 36,
+        "fp": 16,
+        "fn": 9
+      },
+      {
+        "thr": 0.65,
+        "precision": 0.6522,
+        "recall": 0.6667,
+        "f1": 0.6593,
+        "tp": 30,
+        "fp": 16,
+        "fn": 15
+      },
+      {
+        "thr": 0.7,
+        "precision": 0.9,
+        "recall": 0.4,
+        "f1": 0.5538,
+        "tp": 18,
+        "fp": 2,
+        "fn": 27
+      },
+      {
+        "thr": 0.75,
+        "precision": 1.0,
+        "recall": 0.4,
+        "f1": 0.5714,
+        "tp": 18,
+        "fp": 0,
+        "fn": 27
+      },
+      {
+        "thr": 0.8,
+        "precision": 1.0,
+        "recall": 0.4,
+        "f1": 0.5714,
+        "tp": 18,
+        "fp": 0,
+        "fn": 27
+      },
+      {
+        "thr": 0.85,
+        "precision": 1.0,
+        "recall": 0.4,
+        "f1": 0.5714,
+        "tp": 18,
+        "fp": 0,
+        "fn": 27
+      },
+      {
+        "thr": 0.9,
+        "precision": 1.0,
+        "recall": 0.0889,
+        "f1": 0.1633,
+        "tp": 4,
+        "fp": 0,
+        "fn": 41
+      },
+      {
+        "thr": 0.95,
+        "precision": 1.0,
+        "recall": 0.0889,
+        "f1": 0.1633,
+        "tp": 4,
+        "fp": 0,
+        "fn": 41
+      },
+      {
+        "thr": 1.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 45
+      }
+    ],
+    "pii": [
+      {
+        "thr": 0.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 35,
+        "fp": 0,
+        "fn": 0
+      },
+      {
+        "thr": 0.05,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 35,
+        "fp": 0,
+        "fn": 0
+      },
+      {
+        "thr": 0.1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 35,
+        "fp": 0,
+        "fn": 0
+      },
+      {
+        "thr": 0.15,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 35,
+        "fp": 0,
+        "fn": 0
+      },
+      {
+        "thr": 0.2,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 35,
+        "fp": 0,
+        "fn": 0
+      },
+      {
+        "thr": 0.25,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 35,
+        "fp": 0,
+        "fn": 0
+      },
+      {
+        "thr": 0.3,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 35,
+        "fp": 0,
+        "fn": 0
+      },
+      {
+        "thr": 0.35,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 35,
+        "fp": 0,
+        "fn": 0
+      },
+      {
+        "thr": 0.4,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 35,
+        "fp": 0,
+        "fn": 0
+      },
+      {
+        "thr": 0.45,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 35,
+        "fp": 0,
+        "fn": 0
+      },
+      {
+        "thr": 0.5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 35,
+        "fp": 0,
+        "fn": 0
+      },
+      {
+        "thr": 0.55,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 35,
+        "fp": 0,
+        "fn": 0
+      },
+      {
+        "thr": 0.6,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 35,
+        "fp": 0,
+        "fn": 0
+      },
+      {
+        "thr": 0.65,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 35,
+        "fp": 0,
+        "fn": 0
+      },
+      {
+        "thr": 0.7,
+        "precision": 1.0,
+        "recall": 0.6,
+        "f1": 0.75,
+        "tp": 21,
+        "fp": 0,
+        "fn": 14
+      },
+      {
+        "thr": 0.75,
+        "precision": 1.0,
+        "recall": 0.6,
+        "f1": 0.75,
+        "tp": 21,
+        "fp": 0,
+        "fn": 14
+      },
+      {
+        "thr": 0.8,
+        "precision": 1.0,
+        "recall": 0.6,
+        "f1": 0.75,
+        "tp": 21,
+        "fp": 0,
+        "fn": 14
+      },
+      {
+        "thr": 0.85,
+        "precision": 1.0,
+        "recall": 0.6,
+        "f1": 0.75,
+        "tp": 21,
+        "fp": 0,
+        "fn": 14
+      },
+      {
+        "thr": 0.9,
+        "precision": 1.0,
+        "recall": 0.6,
+        "f1": 0.75,
+        "tp": 21,
+        "fp": 0,
+        "fn": 14
+      },
+      {
+        "thr": 0.95,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 35
+      },
+      {
+        "thr": 1.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 35
+      }
+    ]
+  }
+}

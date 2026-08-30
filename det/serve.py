@@ -18,7 +18,7 @@ import torch
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
-from det import bias, embed, nli, safety
+from det import bias, embed, nli, safety, t2
 from det.schema import Finding  # noqa: F401  re-exported: this is the wire contract
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
@@ -66,11 +66,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         MODS[n].load()
         log.info('{"event": "loaded", "model": "%s", "ms": %.0f}',
                  n, (time.perf_counter() - t1) * 1000)
+    await t2.open_t2()
     if WORKERS:
         _wcli = httpx.AsyncClient(timeout=float(os.getenv("DET_WORKER_TIMEOUT_S", "30")))
         log.info('{"event": "workers", "map": "%s"}', WORKERS)
     log.info('{"event": "ready", "ms": %.0f}', (time.perf_counter() - t) * 1000)
     yield
+    await t2.close_t2()
     if _wcli is not None:
         await _wcli.aclose()
 
@@ -103,6 +105,7 @@ async def _worker_health(name: str, port: str) -> dict[str, Any]:
 @app.get("/health")
 async def health() -> dict[str, Any]:
     mods = {n: MODS[n].info() for n in LOCAL}
+    mods["t2"] = t2.info()
     if WORKERS:
         got = await asyncio.gather(*(_worker_health(n, p) for n, p in WORKERS.items()))
         mods.update(dict(zip(WORKERS, got)))
@@ -155,8 +158,14 @@ async def check(r: CheckReq) -> CheckRes:
              "bias": lambda: bias.check(r.resp, sp)}
 
     jobs = []
+    # Tier 2 replaces tier 1 grounding rather than adding to it. Both answer the
+    # same question; t2 answers it with evidence chosen per claim, so running
+    # both would double-count every grounding finding.
+    deep = "t2" in r.need
+    if deep:
+        jobs.append(timed("t2", t2.check(r.resp, r.ctx, r.prompt)))
     for name in ("nli", "safety", "bias"):
-        if name not in r.need:
+        if name not in r.need or (name == "nli" and deep):
             continue
         jobs.append(timed(name, remote(name) if name in WORKERS else local[name]()))
 

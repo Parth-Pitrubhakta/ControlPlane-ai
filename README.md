@@ -23,6 +23,8 @@ Every LLM response is inspected **before anyone reads it** — then allowed, ann
 
 ---
 
+## The 30-second version
+
 Your AI assistant tells a customer the warranty is **5 years**. Your actual policy says **3**.
 It read a stale wiki page. Nothing errored. Nobody noticed for six weeks.
 

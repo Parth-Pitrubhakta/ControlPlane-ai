@@ -46,6 +46,15 @@ class RunRes(BaseModel):
     ms: float
 
 
+class PairReq(BaseModel):
+    pairs: list[tuple[str, str]]      # (premise, hypothesis)
+
+
+class PairRes(BaseModel):
+    scores: list[tuple[float, float]]  # (p_entail, p_contra)
+    ms: float
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     t = time.perf_counter()
@@ -61,6 +70,18 @@ app = FastAPI(title=f"ControlPlane.ai detector [{ROLE}]", lifespan=lifespan)
 @app.get("/health")
 async def health() -> dict[str, Any]:
     return {"role": ROLE, **MOD.info()}
+
+
+@app.post("/pairs", response_model=PairRes)
+async def pairs(r: PairReq) -> PairRes:
+    """Raw entailment scoring. Tier 2 drives its own claim-level comparisons and
+    needs the scores, not nli.check's sentence-level verdicts. Keeping this here
+    means one copy of the model rather than a second one in the coordinator."""
+    if ROLE != "nli":
+        return PairRes(scores=[], ms=0.0)
+    t = time.perf_counter()
+    out = await nli._bat.submit_many([(a, b) for a, b in r.pairs])
+    return PairRes(scores=out, ms=round((time.perf_counter() - t) * 1000, 2))
 
 
 @app.post("/run", response_model=RunRes)

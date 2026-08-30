@@ -28,7 +28,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from api import decide as dec
-from api import detclient, edit, ledger, policy, store, tier0
+from api import detclient, edit, ledger, policy, probe, store, tier0
 from api import router as rt   # `router` here is the APIRouter below
 from api.schemas import RANK, Finding, Trace
 
@@ -115,6 +115,33 @@ def _bg(coro: Any) -> None:
 
 
 
+async def stream_need(
+    tr: Trace,
+    t0p_task: "asyncio.Task[list[Finding]]",
+) -> list[str]:
+    """Which detectors the shadow buffer runs on each sentence window.
+
+    The router cannot help here: it scores a response, and while streaming there
+    is not one yet. So this decides from what exists before generation -- the
+    tenant's declared latency budget, the session's accumulated risk, and what
+    tier 0 already found in the prompt.
+
+    Getting it wrong is costly both ways. Too eager and every sentence waits for
+    a GPU round trip inside the stream. Too lax and the buffer can only stop what
+    a regex can prove, which is PII and injection but not a false claim.
+    """
+    pol = policy.get(tr.tenant, tr.geo)
+    led = await ledger.score(tr.sess)
+    t0p = await t0p_task
+    hot = any(f.label in ("inject", "pii") and f.sev >= 2 for f in t0p)
+
+    # a 500 ms budget affords a ~60 ms check per sentence; a 150 ms one does not
+    roomy = pol.lat_budget_ms >= int(os.getenv("STREAM_T1_BUDGET_MS", "400"))
+    if roomy or ledger.floor(led) >= 1 or hot:
+        return ["nli", "safety", "bias"]
+    return []
+
+
 async def resolve(
     tr: Trace,
     t0p: list[Finding],
@@ -173,7 +200,14 @@ async def resolve(
                    "decide": round((time.perf_counter() - t) * 1000 - t0_ms - t1_ms, 3)})
     await ledger.bump(tr.sess, fnd)
 
+    # Sampled deeper verification, scheduled after the action is settled so it
+    # can never delay or change the response. This is how we measure what the
+    # router misses on real traffic (invariant 4 in spirit: analysis, not gating).
+    audit_probes = probe.maybe(tr, pol, act)
+
     audit = dec.why(fnd, pol, tr.tools, final=act)
+    if audit_probes:
+        audit["probes"] = audit_probes
     audit.update({"risk": tr.risk, "tier": tr.tier, "ledger": round(led, 3),
                   "edits": ops})
     return body, audit
@@ -332,8 +366,9 @@ async def chat(req: Request) -> Any:
     )
 
     if body.get("stream"):
+        need = await stream_need(tr, t0p_task)
         return StreamingResponse(
-            _stream(req, body, tr, t0p_task, t_req, model),
+            _stream(req, body, tr, t0p_task, t_req, model, need),
             media_type="text/event-stream",
             headers={"X-CP-Trace": tr.id, "X-Accel-Buffering": "no"},
         )
@@ -404,6 +439,7 @@ async def _stream(
     t0p_task: "asyncio.Task[list[Finding]]",
     t_req: float,
     model: str,
+    need: list[str] | None = None,
 ) -> AsyncIterator[bytes]:
     """SSE stream, re-emitted through the shadow buffer.
 
@@ -412,7 +448,7 @@ async def _stream(
     than raw tokens. That is the cost of being able to stop a bad span before it
     is read, and it is the whole point of the buffer.
     """
-    sh = Shadow(tr.tenant) if SHADOW_ON else None
+    sh = Shadow(tr.tenant, need=need) if SHADOW_ON else None
     acc: list[str] = []
     tok_in = tok_out = 0
     fin: str | None = None

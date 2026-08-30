@@ -152,5 +152,27 @@
     "router_ece_noise_floor": 0.078,
     "ts": 1787862628.767734,
     "host": "heliosH200 native"
+  },
+  {
+    "phase": "5b",
+    "what": "Tier 2 (claim decomposition + per-claim retrieval + self-consistency k=3) vs tier 1 only, benign set",
+    "n": 310,
+    "t1_only": {
+      "contradicted_precision": 0.0293,
+      "contradicted_fp": 364,
+      "alerts_per_1000": 748.4,
+      "p50_ms": 305.89,
+      "p95_ms": 527.51
+    },
+    "with_t2": {
+      "contradicted_precision": 0.0876,
+      "contradicted_fp": 125,
+      "alerts_per_1000": 609.7,
+      "p50_ms": 738.51,
+      "p95_ms": 1630.45
+    },
+    "budget_ms": "300-800 per spec; p95 exceeds it under concurrency 4",
+    "ts": 1788005696.5267024,
+    "host": "heliosH200 native"
   }
 ]

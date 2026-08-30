@@ -112,6 +112,20 @@ export default function Review({ onChanged }) {
             <div className="note" style={{ padding: "8px 14px" }}>
               {sel.tenant}/{sel.geo} &middot; policy {sel.pol_ver} &middot; risk {sel.risk}
             </div>
+            {sel.judge && (
+              <>
+                <h3>tier 3 second opinion</h3>
+                <div className="judge">
+                  <span className={`act ${sel.judge.verdict === "agree" ? "allow" : "annotate"}`}>
+                    {sel.judge.verdict}
+                  </span>
+                  {sel.judge.should_be && (
+                    <span className="note">would have said <b>{sel.judge.should_be}</b></span>
+                  )}
+                  <div className="why">{sel.judge.why}</div>
+                </div>
+              </>
+            )}
             <h3>response the model produced</h3>
             <Highlighted text={sel.resp} findings={sel.fnd} />
             <h3>was each finding correct?</h3>

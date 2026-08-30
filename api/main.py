@@ -11,7 +11,7 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api import detclient, gateway, policy, router, store
+from api import detclient, gateway, policy, probe, retention, router, store
 from api.routes import admin, metrics, review
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
@@ -42,6 +42,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await detclient.open_det()
     await gateway.open_gw()
     await policy.open_policy()
+    await probe.open_probe()
+    await retention.open_retention()
     if not router.load():
         log.warning('router_untrained', note='every request falls back to the tier floor')
     try:
@@ -51,6 +53,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         log.warning("idx_failed", err=str(e))
     log.info("boot", mock_h200=detclient.MOCK, det_url=detclient.DET_URL)
     yield
+    await retention.close_retention()
+    await probe.close_probe()
     await policy.close_policy()
     await gateway.close_gw()
     await detclient.close_det()

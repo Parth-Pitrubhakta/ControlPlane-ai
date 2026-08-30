@@ -59,7 +59,14 @@ share/python-wheels/
 # =========================
 # Project / IDE
 # =========================
-.run/
+# Runtime state: pidfiles, logs, the Mongo data directory.
+# NOTE: `.run/*` not `.run/` -- git does not descend into an excluded directory,
+# so the negation below would never match otherwise.
+.run/*
+# ...but the launch scripts live here and MUST be tracked. They encode the
+# LD_LIBRARY_PATH fix, the FlashInfer workaround and the GPU pinning; without
+# them a fresh clone cannot start anything.
+!.run/*.sh
 .vscode/
 .idea/
 
@@ -72,3 +79,23 @@ node_modules/
 # Project-specific
 # =========================
 vendor/
+
+# --- Generated and third-party data ---------------------------------------
+
+# Upstream RAGTruth dataset, 35 MB. Not ours, MIT licensed, and re-downloaded
+# automatically by `python -m api.eval.build_bench`.
+bench/raw/
+
+# docs/build.sh intermediates. The PDF and the diagram PNGs are committed; the
+# files used to produce them are not.
+docs/.pdf.md
+docs/.pptr.json
+docs/img/*.mmd
+
+# Local model caches, if anyone points HF_HOME inside the repo
+.cache/
+hf-cache/
+
+# Stray process output
+nohup.out
+*.pid

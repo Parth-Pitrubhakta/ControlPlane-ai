@@ -1,0 +1,156 @@
+[
+  {
+    "phase": 0,
+    "what": "gateway framework round trip (/health, mongo+redis ping, no detectors)",
+    "n": 200,
+    "p50_ms": 7.035,
+    "p95_ms": 7.279,
+    "ts": 1787841788.5654094,
+    "host": "heliosH200 native"
+  },
+  {
+    "what": "T0 full scan (pii+inject+deny+fmt), regex backend",
+    "n": 200,
+    "p50_ms": 0.276,
+    "p95_ms": 0.341,
+    "max_ms": 0.397,
+    "phase": 1,
+    "ts": 1787842113.8340707,
+    "host": "heliosH200 native"
+  },
+  {
+    "what": "T0 pii regex only",
+    "n": 200,
+    "p50_ms": 0.112,
+    "p95_ms": 0.137,
+    "max_ms": 0.168,
+    "phase": 1,
+    "ts": 1787842113.8341115,
+    "host": "heliosH200 native"
+  },
+  {
+    "what": "T0 inject only",
+    "n": 200,
+    "p50_ms": 0.151,
+    "p95_ms": 0.177,
+    "max_ms": 0.196,
+    "phase": 1,
+    "ts": 1787842113.8341193,
+    "host": "heliosH200 native"
+  },
+  {
+    "what": "T0 cost arithmetic",
+    "n": 200,
+    "p50_ms": 0.001,
+    "p95_ms": 0.001,
+    "max_ms": 0.001,
+    "phase": 1,
+    "ts": 1787842113.8341248,
+    "host": "heliosH200 native"
+  },
+  {
+    "what": "T0 pii presidio (spacy en_core_web_sm)",
+    "n": 200,
+    "p50_ms": 12.63,
+    "p95_ms": 14.892,
+    "max_ms": 17.199,
+    "phase": 1,
+    "ts": 1787842113.8341296,
+    "host": "heliosH200 native"
+  },
+  {
+    "phase": 1,
+    "what": "T0 verification overhead measured in-request (prompt scan awaited + response scan + cost)",
+    "n": 200,
+    "p50_ms": 0.435,
+    "p95_ms": 0.491,
+    "max_ms": 3.273,
+    "budget_ms": 5,
+    "pass": true,
+    "ts": 1787842458.230855,
+    "host": "heliosH200 native"
+  },
+  {
+    "phase": 2,
+    "what": "T1 /check end-to-end, 200-token response x 5 chunks, all three detectors",
+    "n": 40,
+    "p50_ms": 60.87,
+    "p95_ms": 65.75,
+    "budget_ms": 80,
+    "pass": true,
+    "detail": {
+      "safety": 37.41,
+      "nli": 49.93,
+      "bias": 53.48,
+      "total": 55.31
+    },
+    "note": "coordinator on 8100 fanning out to one worker process per model",
+    "ts": 1787845409.0061355,
+    "host": "heliosH200 native"
+  },
+  {
+    "phase": 2,
+    "what": "T1 /check, semantic cache hit",
+    "n": 40,
+    "p50_ms": 15.46,
+    "p95_ms": 17.88,
+    "ts": 1787845409.0061972,
+    "host": "heliosH200 native"
+  },
+  {
+    "phase": 3,
+    "what": "end-to-end verification overhead through the full ladder (T0 + router + decide, T1 when routed)",
+    "n": 100,
+    "p50_ms": 25.02,
+    "p95_ms": 26.7,
+    "tier_dist": {
+      "2": 25,
+      "1": 50,
+      "0": 25
+    },
+    "act_dist": {
+      "allow": 50,
+      "escalate": 25,
+      "annotate": 25
+    },
+    "t1_invocations": 75,
+    "t1_rate": 0.75,
+    "t1_p50_ms": 23.34,
+    "ts": 1787858569.13974,
+    "host": "heliosH200 native"
+  },
+  {
+    "phase": 5,
+    "what": "ControlPlane-Bench benign: verification overhead through the full ladder",
+    "n": 310,
+    "p50_ms": 305.89,
+    "p95_ms": 527.51,
+    "concurrency": 4,
+    "pct_of_measured_always_deep": 133.55,
+    "t1_rate": 0.929,
+    "catch_before_delivery": 0.9371,
+    "alerts_per_1000": 748.4,
+    "actionable_per_1000": 474.2,
+    "router_ece": 0.326,
+    "router_ece_noise_floor": 0.0565,
+    "ts": 1787862628.767731,
+    "host": "heliosH200 native"
+  },
+  {
+    "phase": 5,
+    "what": "ControlPlane-Bench adversarial: verification overhead through the full ladder",
+    "n": 160,
+    "p50_ms": 269.93,
+    "p95_ms": 398.13,
+    "concurrency": 4,
+    "pct_of_measured_always_deep": 117.24,
+    "t1_rate": 0.9688,
+    "catch_before_delivery": 0.825,
+    "alerts_per_1000": 825.0,
+    "actionable_per_1000": 506.2,
+    "router_ece": 0.0437,
+    "router_ece_noise_floor": 0.078,
+    "ts": 1787862628.767734,
+    "host": "heliosH200 native"
+  }
+]

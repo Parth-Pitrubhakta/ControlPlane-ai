@@ -1,0 +1,83 @@
+{
+  "DECIDE": {
+    "med": 0.0641,
+    "high": 0.5267,
+    "recall_floor": 0.98,
+    "at_med": {
+      "thr": 0.0641,
+      "recall": 0.9953,
+      "fpr": 0.9492,
+      "precision": 0.5325,
+      "checked_per_100_at_base": 95.02
+    },
+    "at_high": {
+      "thr": 0.5267,
+      "recall": 0.8178,
+      "fpr": 0.0964,
+      "precision": 0.9021,
+      "checked_per_100_at_base": 11.09
+    },
+    "budget": {
+      "t1_share": 0.8393,
+      "t2_share": 0.1109,
+      "blended_ms": 107.0,
+      "always_deep_ms": 500.0,
+      "pct_of_always_deep": 21.4,
+      "note": "T0/T1 measured on this build; T2 cost assumed, not yet built"
+    }
+  },
+  "CS-BOT": {
+    "med": 0.375,
+    "high": 0.7193,
+    "recall_floor": 0.9,
+    "at_med": {
+      "thr": 0.375,
+      "recall": 0.9051,
+      "fpr": 0.2025,
+      "precision": 0.8237,
+      "checked_per_100_at_base": 21.65
+    },
+    "at_high": {
+      "thr": 0.7193,
+      "recall": 0.7174,
+      "fpr": 0.0227,
+      "precision": 0.9706,
+      "checked_per_100_at_base": 3.66
+    },
+    "budget": {
+      "t1_share": 0.1799,
+      "t2_share": 0.0366,
+      "blended_ms": 29.7,
+      "always_deep_ms": 500.0,
+      "pct_of_always_deep": 5.94,
+      "note": "T0/T1 measured on this build; T2 cost assumed, not yet built"
+    }
+  },
+  "KB-COPILOT": {
+    "med": 0.4118,
+    "high": 0.7205,
+    "recall_floor": 0.85,
+    "at_med": {
+      "thr": 0.4118,
+      "recall": 0.8385,
+      "fpr": 0.1104,
+      "precision": 0.8777,
+      "checked_per_100_at_base": 12.5
+    },
+    "at_high": {
+      "thr": 0.7205,
+      "recall": 0.6804,
+      "fpr": 0.0032,
+      "precision": 0.995,
+      "checked_per_100_at_base": 1.68
+    },
+    "budget": {
+      "t1_share": 0.1082,
+      "t2_share": 0.0168,
+      "blended_ms": 15.43,
+      "always_deep_ms": 500.0,
+      "pct_of_always_deep": 3.09,
+      "note": "T0/T1 measured on this build; T2 cost assumed, not yet built"
+    }
+  }
+}

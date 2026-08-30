@@ -1,0 +1,11 @@
+# Runs in the cp-vllm env: torch and transformers are already pinned there by
+# vLLM, and a second multi-GB install buys nothing.
+torch>=2.5
+transformers>=4.45
+fastapi>=0.115
+uvicorn[standard]>=0.34
+httpx>=0.28
+pydantic>=2.9
+sentencepiece>=0.2
+pytest>=8.3
+pytest-asyncio>=0.25

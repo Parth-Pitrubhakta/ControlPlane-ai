@@ -1,0 +1,517 @@
+"""OpenAI-compatible proxy. Every request through here produces a Trace.
+
+Phase 1 scope: forward, trace, run tier 0. Findings are recorded but no action
+is enforced yet -- decide.py lands in phase 3, and until then act stays "allow".
+
+Callers pass our extensions either as headers (X-CP-Tenant, X-CP-Geo,
+X-CP-Session) or as a "cp" object in the request body, which is stripped before
+the body is forwarded upstream so the request stays valid OpenAI JSON:
+
+    {"model": ..., "messages": [...],
+     "cp": {"ctx": [{"id": "pol-3", "text": "...", "score": 0.8}],
+            "tools": ["crm.read"], "tenant": "CS-BOT", "geo": "IN"}}
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import os
+import re
+import time
+import uuid
+from typing import Any, AsyncIterator
+
+import httpx
+import structlog
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse, StreamingResponse
+
+from api import decide as dec
+from api import detclient, edit, ledger, policy, store, tier0
+from api import router as rt   # `router` here is the APIRouter below
+from api.schemas import RANK, Finding, Trace
+
+log = structlog.get_logger("gw")
+router = APIRouter()
+
+VLLM_URL = os.getenv("VLLM_URL", "http://127.0.0.1:8000/v1")
+MOCK = os.getenv("MOCK_H200", "0") == "1"
+GEN_TIMEOUT_S = float(os.getenv("GEN_TIMEOUT_S", "120"))
+TENANTS = ("CS-BOT", "KB-COPILOT", "DECIDE")
+# model name -> price tier, for the cost arithmetic in tier0
+TIER_OF: dict[str, str] = {"Qwen/Qwen2.5-7B-Instruct": "small"}
+SHADOW_TOKENS = int(os.getenv("SHADOW_TOKENS", "40"))
+T1_ON = os.getenv("T1", "1") == "1"
+
+# Fixed bodies for the two actions that withhold the model's text. Constants,
+# not generated: a blocked response must not be an opportunity to say something
+# new (invariant 5).
+BLOCK_MSG = ("This response was withheld by the ControlPlane policy check. "
+             "Please rephrase your request or contact support.")
+ESC_MSG = ("This response is being reviewed by a person before it can be sent. "
+           "You will get an answer shortly.")
+SHADOW_ON = os.getenv("SHADOW", "1") == "1"
+
+# sentence boundary used to cut the shadow buffer into checkable windows
+_END = re.compile(r"[.!?](?:[\"\')\]]+)?(?:\s|$)|\n")
+
+_cli: httpx.AsyncClient | None = None
+
+
+async def open_gw() -> None:
+    global _cli
+    _cli = httpx.AsyncClient(base_url=VLLM_URL, timeout=GEN_TIMEOUT_S)
+
+
+async def close_gw() -> None:
+    global _cli
+    if _cli is not None:
+        await _cli.aclose()
+        _cli = None
+
+
+# ------------------------------------------------------------------ helpers
+
+def _txt(msgs: list[dict[str, Any]]) -> str:
+    """Flatten chat messages to the prompt text tier 0 scans."""
+    out: list[str] = []
+    for m in msgs:
+        c = m.get("content")
+        if isinstance(c, str):
+            out.append(c)
+        elif isinstance(c, list):
+            out.extend(p.get("text", "") for p in c if isinstance(p, dict))
+    return "\n".join(out)
+
+
+def _est_tok(s: str) -> int:
+    return max(1, len(s) // 4)
+
+
+def _meta(req: Request, cp: dict[str, Any]) -> tuple[str, str, str]:
+    tenant = req.headers.get("X-CP-Tenant") or cp.get("tenant") or "CS-BOT"
+    if tenant not in TENANTS:
+        tenant = "CS-BOT"
+    geo = req.headers.get("X-CP-Geo") or cp.get("geo") or "IN"
+    sess = req.headers.get("X-CP-Session") or cp.get("sess") or f"s-{uuid.uuid4().hex[:8]}"
+    return tenant, geo, sess
+
+
+async def _scan(txt: str, side: str) -> list[Finding]:
+    return tier0.scan(tier0.norm(txt), side=side)
+
+
+_bg_tasks: set["asyncio.Task[None]"] = set()
+
+
+def _bg(coro: Any) -> None:
+    """Run to completion outside the request. A client that hangs up mid-stream
+    must still leave a trace behind, so the tail cannot be awaited inside the
+    response generator -- closing it would cancel the save."""
+    t = asyncio.ensure_future(coro)
+    _bg_tasks.add(t)
+    t.add_done_callback(_bg_tasks.discard)
+
+
+
+async def resolve(
+    tr: Trace,
+    t0p: list[Finding],
+    resp: str,
+    model: str,
+) -> tuple[str, dict[str, Any]]:
+    """Tier 0 -> router -> tier 1 -> policy -> action. Returns (body, audit).
+
+    The router's float chooses how hard to look. It is stamped on the trace for
+    analysis and then discarded: the action below is resolved by decide.py from
+    the findings themselves (invariant 3).
+    """
+    t = time.perf_counter()
+    pol = policy.get(tr.tenant, tr.geo)
+    tr.pol_ver = policy.ver(tr.tenant, tr.geo)
+
+    fnd = list(t0p) + tier0.scan(tier0.norm(resp), side="resp")
+    fnd += tier0.cost(tr.tenant, tr.tok_in, tr.tok_out, len(tr.tools),
+                      TIER_OF.get(model, "mid"), span=(0, min(len(resp), 1)))
+    t0_ms = (time.perf_counter() - t) * 1000
+
+    tr.resp = resp
+    # a session that has already misbehaved starts later turns at a higher tier
+    led = await ledger.score(tr.sess)
+    tr.risk = rt.risk(tr, fnd)
+    tr.tier = rt.tier(tr.risk, pol, floor=ledger.floor(led))
+
+    t1_ms = 0.0
+    if T1_ON and tr.tier >= 1 and resp.strip():
+        t1f, t1l = await detclient.check(resp, tr.ctx, rt.need_for(tr.tier))
+        # A detector reports what it saw; the policy decides what confidence is
+        # worth acting on. Keeping the cut here means a recalibration ships as a
+        # policy version and never needs the detector service restarted.
+        dthr = pol.thr.get("det") or {}
+        fnd += [f for f in t1f if f.conf >= float(dthr.get(f.label, 0.0))]
+        t1_ms = float(t1l.get("t1", 0.0))
+
+    tr.fnd = fnd
+    act = dec.decide(fnd, pol, tr.tools)
+
+    body = resp
+    ops: list[dict[str, Any]] = []
+    if act == "edit":
+        body, ops = edit.run(resp, fnd, act)
+        if edit.emptied(ops):
+            # nothing survived the edit, and rewriting is a regenerate, which is
+            # an escalate rather than an edit (invariant 5)
+            act = "escalate"
+    if act == "block":
+        body = BLOCK_MSG
+    elif act == "escalate":
+        body = ESC_MSG
+
+    tr.act = act
+    tr.lat.update({"t0": round(t0_ms, 3), "t1": round(t1_ms, 2),
+                   "decide": round((time.perf_counter() - t) * 1000 - t0_ms - t1_ms, 3)})
+    await ledger.bump(tr.sess, fnd)
+
+    audit = dec.why(fnd, pol, tr.tools, final=act)
+    audit.update({"risk": tr.risk, "tier": tr.tier, "ledger": round(led, 3),
+                  "edits": ops})
+    return body, audit
+
+
+async def _save(tr: Trace) -> None:
+    try:
+        await store.put_trace(tr)
+    except Exception as e:
+        log.warning("trace_save_failed", id=tr.id, err=str(e))
+
+
+
+# --------------------------------------------------------------- shadow buffer
+
+def _cut(pend: str) -> int | None:
+    """End offset of the first complete sentence in pend, or None."""
+    m = _END.search(pend)
+    return m.end() if m else None
+
+
+def _hold(fnd: list[Finding]) -> bool:
+    """Whether a checked window must not reach the client.
+
+    Phase 2 placeholder: a deliberately narrow rule covering the cases tier 0
+    can prove. decide.py replaces this in phase 3, where the policy rulebook and
+    the per-tenant floors make the call. Note what is absent: `unverifiable`
+    never holds, per invariant 2.
+    """
+    return any(f.sev >= 2 and f.label in ("pii", "unsafe", "inject") for f in fnd)
+
+
+class Shadow:
+    """Holds back the tail of a stream until it has been checked.
+
+    A guardrail that inspects the response after the user has read it is not a
+    guardrail. Text leaves here only once a detector has seen it: complete
+    sentences are checked and released, and if generation stalls mid-sentence
+    the buffer is force-checked once it exceeds SHADOW_TOKENS so a slow model
+    cannot deadlock the stream.
+    """
+
+    def __init__(self, tenant: str, need: list[str] | None = None) -> None:
+        self.pend = ""
+        self.ntok = 0
+        self.tenant = tenant
+        self.need = need or []
+        self.fnd: list[Finding] = []
+        self.held = False
+        self.base = 0        # char offset of pend[0] within the full response
+        self.lat: list[float] = []
+
+    async def _check(self, seg: str, off: int) -> list[Finding]:
+        if not seg.strip():
+            return []       # a whitespace window is not a claim, not a defect
+        t = time.perf_counter()
+        fnd = tier0.scan(tier0.norm(seg), side="resp")
+        if self.need:
+            t1, _ = await detclient.check(seg, [], self.need)
+            fnd += t1
+        self.lat.append((time.perf_counter() - t) * 1000)
+        for f in fnd:                      # rebase spans onto the full response
+            f.span = (f.span[0] + off, f.span[1] + off)
+        return fnd
+
+    async def feed(self, delta: str) -> str:
+        """Take one token, return whatever is now safe to release."""
+        self.pend += delta
+        self.ntok += 1
+        out = ""
+        while True:
+            c = _cut(self.pend)
+            if c is None:
+                break
+            seg, self.pend = self.pend[:c], self.pend[c:]
+            fnd = await self._check(seg, self.base)
+            self.fnd += fnd
+            self.base += len(seg)
+            if _hold(fnd):
+                self.held = True
+                return out
+            out += seg
+            self.ntok = max(0, self.ntok - 1)
+        if self.ntok > SHADOW_TOKENS:
+            # no sentence end in sight; check and release all but the shadow tail
+            keep = SHADOW_TOKENS * 4
+            if len(self.pend) > keep:
+                seg, self.pend = self.pend[:-keep], self.pend[-keep:]
+                fnd = await self._check(seg, self.base)
+                self.fnd += fnd
+                self.base += len(seg)
+                if _hold(fnd):
+                    self.held = True
+                    return out
+                out += seg
+                self.ntok = SHADOW_TOKENS
+        return out
+
+    async def drain(self) -> str:
+        """Flush whatever is left when generation ends."""
+        if not self.pend or self.held:
+            return ""
+        seg, self.pend = self.pend, ""
+        fnd = await self._check(seg, self.base)
+        self.fnd += fnd
+        self.base += len(seg)
+        if _hold(fnd):
+            self.held = True
+            return ""
+        return seg
+
+
+# --------------------------------------------------------------- mock upstream
+
+# Deliberately clean at tier 0 so the offline rehearsal has a baseline where
+# nothing fires. The "3 years" claim is the tier-1 contradiction against the
+# governed returns policy, which needs ctx to surface.
+_MOCK_TXT = (
+    "Refunds are issued to the original payment method. Our policy allows returns "
+    "within 3 years of purchase for unopened items. Reply to this message if the "
+    "credit has not appeared after five business days."
+)
+
+
+async def _mock_stream(model: str) -> AsyncIterator[str]:
+    for w in _MOCK_TXT.split(" "):
+        yield w + " "
+        await asyncio.sleep(0.004)
+
+
+# ------------------------------------------------------------------- endpoint
+
+@router.post("/v1/chat/completions")
+async def chat(req: Request) -> Any:
+    t_req = time.perf_counter()
+    body = await req.json()
+    cp: dict[str, Any] = body.pop("cp", {}) or {}
+    tenant, geo, sess = _meta(req, cp)
+    msgs = body.get("messages", [])
+    prompt = _txt(msgs)
+    model = body.get("model", "Qwen/Qwen2.5-7B-Instruct")
+
+    # tier 0 on the prompt runs while the model generates, so it costs nothing
+    t0p_task = asyncio.create_task(_scan(prompt, "prompt"))
+
+    tr = Trace(
+        id=f"t-{uuid.uuid4().hex[:12]}",
+        sess=sess,
+        tenant=tenant,
+        geo=geo,
+        ts=time.time(),
+        prompt=prompt,
+        resp="",
+        ctx=cp.get("ctx", []) or [],
+        tools=cp.get("tools", []) or [],
+    )
+
+    if body.get("stream"):
+        return StreamingResponse(
+            _stream(req, body, tr, t0p_task, t_req, model),
+            media_type="text/event-stream",
+            headers={"X-CP-Trace": tr.id, "X-Accel-Buffering": "no"},
+        )
+
+    if MOCK:
+        await asyncio.sleep(0.05)
+        txt = _MOCK_TXT
+        tok_in, tok_out = _est_tok(prompt), _est_tok(txt)
+        up: dict[str, Any] = {
+            "id": f"chatcmpl-{tr.id}", "object": "chat.completion",
+            "created": int(tr.ts), "model": model,
+            "choices": [{"index": 0, "finish_reason": "stop",
+                         "message": {"role": "assistant", "content": txt}}],
+            "usage": {"prompt_tokens": tok_in, "completion_tokens": tok_out,
+                      "total_tokens": tok_in + tok_out},
+        }
+    else:
+        if _cli is None:
+            return JSONResponse({"error": "gateway not opened"}, status_code=503)
+        try:
+            r = await _cli.post("/chat/completions", json=body)
+            r.raise_for_status()
+            up = r.json()
+        except Exception as e:
+            log.warning("upstream_failed", err=str(e), id=tr.id)
+            tr.lat = {"gen": (time.perf_counter() - t_req) * 1000}
+            await _save(tr)
+            return JSONResponse(
+                {"error": {"message": f"upstream: {type(e).__name__}",
+                           "type": "upstream_error"}},
+                status_code=502, headers={"X-CP-Trace": tr.id},
+            )
+        txt = (up.get("choices") or [{}])[0].get("message", {}).get("content", "") or ""
+        u = up.get("usage") or {}
+        tok_in = int(u.get("prompt_tokens") or _est_tok(prompt))
+        tok_out = int(u.get("completion_tokens") or _est_tok(txt))
+
+    t0p = await t0p_task
+    tr.tok_in, tr.tok_out = tok_in, tok_out
+    tr.cost = tier0.cost_usd(tok_in, tok_out, TIER_OF.get(model, "mid"))
+    body, audit = await resolve(tr, t0p, txt, model)
+    tr.lat["gen"] = round((time.perf_counter() - t_req) * 1000, 2)
+    tr.lat["total"] = round(tr.lat["gen"], 2)
+    await _save(tr)
+
+    ch0 = (up.get("choices") or [{}])[0]
+    ch0.setdefault("message", {})["content"] = body
+    if tr.act in ("block", "escalate"):
+        ch0["finish_reason"] = "content_filter"
+    # additive, so a plain OpenAI client ignores it and ours can render it
+    up["cp"] = {"trace": tr.id, "act": tr.act, "tier": tr.tier,
+                "pol_ver": tr.pol_ver, **audit}
+
+    log.info("traced", id=tr.id, tenant=tenant, act=tr.act, tier=tr.tier,
+             risk=tr.risk, nfnd=len(tr.fnd), lat=tr.lat)
+    return JSONResponse(
+        up,
+        headers={"X-CP-Trace": tr.id, "X-CP-Action": tr.act,
+                 "X-CP-Tier": str(tr.tier), "X-CP-Policy": tr.pol_ver,
+                 "X-CP-Findings": str(len(tr.fnd))},
+    )
+
+
+async def _stream(
+    req: Request,
+    body: dict[str, Any],
+    tr: Trace,
+    t0p_task: "asyncio.Task[list[Finding]]",
+    t_req: float,
+    model: str,
+) -> AsyncIterator[bytes]:
+    """SSE stream, re-emitted through the shadow buffer.
+
+    This is not a passthrough. Deltas go into Shadow and only come out once a
+    detector has seen them, so the client receives sentence-sized chunks rather
+    than raw tokens. That is the cost of being able to stop a bad span before it
+    is read, and it is the whole point of the buffer.
+    """
+    sh = Shadow(tr.tenant) if SHADOW_ON else None
+    acc: list[str] = []
+    tok_in = tok_out = 0
+    fin: str | None = None
+
+    def ch(txt: str, finish: str | None = None) -> bytes:
+        d = {"id": f"chatcmpl-{tr.id}", "object": "chat.completion.chunk",
+             "created": int(tr.ts), "model": model,
+             "choices": [{"index": 0, "delta": ({"content": txt} if txt else {}),
+                          "finish_reason": finish}]}
+        return f"data: {json.dumps(d)}\n\n".encode()
+
+    async def deltas() -> AsyncIterator[str]:
+        nonlocal tok_in, tok_out
+        if MOCK:
+            async for w in _mock_stream(model):
+                tok_out += 1
+                yield w
+            tok_in = _est_tok(tr.prompt)
+            return
+        if _cli is None:
+            return
+        b2 = {**body, "stream_options": {"include_usage": True}}
+        async with _cli.stream("POST", "/chat/completions", json=b2) as r:
+            async for line in r.aiter_lines():
+                if not line.startswith("data: "):
+                    continue
+                payload = line[6:].strip()
+                if payload == "[DONE]":
+                    continue
+                try:
+                    obj = json.loads(payload)
+                except json.JSONDecodeError:
+                    continue
+                for c in obj.get("choices") or []:
+                    d = (c.get("delta") or {}).get("content")
+                    if d:
+                        tok_out += 1
+                        yield d
+                u = obj.get("usage") or {}
+                if u:
+                    tok_in = int(u.get("prompt_tokens") or 0)
+                    tok_out = int(u.get("completion_tokens") or tok_out)
+
+    try:
+        async for d in deltas():
+            acc.append(d)
+            if sh is None:
+                yield ch(d)
+                continue
+            rel = await sh.feed(d)
+            if rel:
+                yield ch(rel)
+            if sh.held:
+                fin = "content_filter"
+                yield ch("", finish=fin)
+                break
+        if sh is not None and not sh.held:
+            rel = await sh.drain()
+            if rel:
+                yield ch(rel)
+        if fin is None:
+            yield ch("", finish="stop")
+        yield b"data: [DONE]\n\n"
+    finally:
+        _bg(_tail(tr, "".join(acc), t0p_task, t_req, tok_in, tok_out, model, sh))
+
+
+async def _tail(
+    tr: Trace,
+    txt: str,
+    t0p_task: "asyncio.Task[list[Finding]]",
+    t_req: float,
+    tok_in: int,
+    tok_out: int,
+    model: str,
+    sh: "Shadow | None" = None,
+) -> None:
+    """Post-stream trace write. Runs detached, so a disconnect still traces."""
+    t0p = await t0p_task
+    tr.tok_in = tok_in or _est_tok(tr.prompt)
+    tr.tok_out = tok_out or _est_tok(txt)
+    tr.cost = tier0.cost_usd(tr.tok_in, tr.tok_out, TIER_OF.get(model, "mid"))
+
+    # The shadow buffer already ran tier 0 window by window, which is what can
+    # stop a span mid-stream. resolve() re-runs the full ladder over the finished
+    # text so the recorded action comes from the same rulebook the
+    # non-streaming path uses, rather than from a second implementation.
+    held = sh is not None and sh.held
+    _, audit = await resolve(tr, t0p, txt, model)
+
+    if sh is not None:
+        tr.lat["shadow"] = round(sum(sh.lat), 3)
+        tr.lat["shadow_n"] = len(sh.lat)
+    if held and RANK[tr.act] < RANK["block"]:
+        # the buffer already withheld the span, so the trace must say block even
+        # if the finished text would have resolved lower
+        tr.act = "block"
+    tr.lat["gen"] = round((time.perf_counter() - t_req) * 1000, 2)
+    tr.lat["total"] = tr.lat["gen"]
+    await _save(tr)
+    log.info("traced_stream", id=tr.id, tenant=tr.tenant, act=tr.act,
+             tier=tr.tier, risk=tr.risk, nfnd=len(tr.fnd), lat=tr.lat)
